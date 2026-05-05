@@ -1,0 +1,196 @@
+"""
+acquisition_agent.py — analisa o funil de aquisição (Closer, Growth, deals, leads).
+
+Especializado em dados do HubSpot. Tom comercial, linguagem de pipeline e conversão.
+"""
+
+from __future__ import annotations
+
+import json
+import time
+from datetime import datetime
+from typing import Any
+
+import anthropic
+
+from agents.analytics_agent import AnalyticsInput, AnalyticsResult, AnalyticsAgentError
+from agents.tools import ToolContext, get_claude_tools, TOOL_TO_QUERY_TYPE, execute_tool
+from config import settings
+from prompts import ACQUISITION_SYSTEM_PROMPT
+
+logger = settings.logger
+_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+
+MAX_STEPS = 4
+
+_TOOL_AREAS = ["closer", "growth", "misto"]
+
+
+def _log(session_id: str, event: str, **kwargs) -> None:
+    parts = [
+        f"SESSION={session_id}",
+        "AGENT=AcquisitionAgent",
+        f"EVENT={event}",
+        *[f"{k}={v}" for k, v in kwargs.items()],
+    ]
+    msg = f"{datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')} | {' | '.join(parts)}"
+    if event == "error":
+        logger.error(msg)
+    else:
+        logger.info(msg)
+
+
+def _to_claude_history(messages: list[dict]) -> list[dict]:
+    result = []
+    for msg in messages:
+        role = "assistant" if msg["role"] == "assistant" else "user"
+        result.append({"role": role, "content": msg["content"]})
+    return result
+
+
+def run(inp: AnalyticsInput, session_id: str) -> AnalyticsResult:
+    _log(session_id, "started", query=inp.user_query[:120])
+    t0 = time.time()
+
+    ctx = ToolContext(
+        vendas=inp.context.vendas,
+        produtores=inp.context.produtores,
+        data_reference_date=inp.context.data_reference_date,
+        data_source=inp.context.data_source,
+        hs_closer=inp.context.hs_closer,
+        hs_growth=inp.context.hs_growth,
+    )
+
+    warnings: list[str] = []
+    if "stale" in (inp.context.data_source or ""):
+        warnings.append(f"Dados carregados de {inp.context.data_source}.")
+
+    system = ACQUISITION_SYSTEM_PROMPT
+    date_ctx: list[str] = []
+    if inp.context.data_reference_date:
+        date_ctx.append(
+            f"DATA DE REFERÊNCIA DOS DADOS: {inp.context.data_reference_date}. "
+            "Este é o 'hoje' para todas as perguntas relativas (mês atual, último mês, trimestre, etc.)."
+        )
+    if date_ctx:
+        system = system + "\n\n---\nContexto da sessão: " + " ".join(date_ctx)
+    contract = inp.intent_contract
+    if contract is not None:
+        contract_parts: list[str] = []
+        if contract.periodo_resolvido:
+            contract_parts.append(f"- Período identificado na pergunta: **{contract.periodo_resolvido}** — use este filtro obrigatoriamente.")
+        if contract.ambiguidades:
+            contract_parts.append(f"- Ambiguidades detectadas: {'; '.join(contract.ambiguidades)}.")
+        if contract_parts:
+            system = system + "\n\n---\n## Contexto da pergunta (pré-processado)\n" + "\n".join(contract_parts)
+
+    messages: list[Any] = _to_claude_history(inp.conversation_history or [])
+    messages.append({"role": "user", "content": inp.user_query})
+
+    tools_called: list[dict] = []
+    last_tool_result: dict = {}
+    _tools = get_claude_tools(_TOOL_AREAS)
+
+    for step in range(MAX_STEPS):
+        response = None
+        last_exc = None
+        for attempt in range(1, 4):
+            try:
+                response = _client.messages.create(
+                    model=settings.claude_model,
+                    system=system,
+                    tools=_tools,
+                    messages=messages,
+                    max_tokens=16384,
+                )
+                break
+            except Exception as exc:
+                last_exc = exc
+                if isinstance(exc, anthropic.APIStatusError):
+                    logger.error(f"Claude APIStatusError {exc.status_code}: {exc}")
+                    if exc.status_code == 529 and attempt < 3:
+                        wait = attempt * 3
+                        _log(session_id, "claude_retry", step=step + 1, attempt=attempt, wait_s=wait, error=str(exc)[:100])
+                        time.sleep(wait)
+                        continue
+                    msg = ("⚠️ **API Claude sobrecarregada**\n\nAguarde 10–20 segundos e tente novamente."
+                           if exc.status_code == 529 else
+                           f"⚠️ **Erro na API Claude ({exc.status_code})**\n\nTente novamente.")
+                elif isinstance(exc, anthropic.RateLimitError):
+                    logger.error(f"Claude RateLimitError: {exc}")
+                    msg = "⚠️ **Limite de requisições atingido**\n\nAguarde alguns instantes e tente novamente."
+                elif isinstance(exc, anthropic.AuthenticationError):
+                    logger.error(f"Claude AuthenticationError: {exc}")
+                    msg = "⚠️ **Erro de autenticação**\n\nChave de API inválida. Verifique o arquivo `.env`."
+                else:
+                    logger.error(f"Erro inesperado no Claude: {type(exc).__name__}: {exc}")
+                    msg = f"⚠️ **Erro inesperado**\n\n`{str(exc)[:120]}`\n\nTente novamente."
+                raise AnalyticsAgentError(str(exc), user_facing_message=msg) from exc
+
+        _log(
+            session_id, "claude_step",
+            step=step + 1,
+            tokens_in=response.usage.input_tokens,
+            tokens_out=response.usage.output_tokens,
+        )
+
+        fn_calls = [b for b in response.content if b.type == "tool_use"]
+
+        messages.append({"role": "assistant", "content": response.content})
+
+        if not fn_calls:
+            _log(session_id, "no_tool_call", step=step + 1)
+            break
+
+        tool_results = []
+        for fc in fn_calls:
+            tool_name = fc.name
+            tool_args = dict(fc.input or {})
+            _log(session_id, "tool_call", tool=tool_name, args=str(tool_args)[:200])
+            try:
+                result = execute_tool(tool_name, tool_args, ctx)
+            except Exception as exc:
+                result = {"query_type": tool_name, "summary": {"erro": str(exc)}, "tabular": [], "ops": []}
+                _log(session_id, "tool_error", tool=tool_name, error=str(exc)[:200])
+
+            tools_called.append({"name": tool_name, "args": tool_args, "result": result})
+            last_tool_result = result
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": fc.id,
+                "content": json.dumps(result, ensure_ascii=False, default=str),
+            })
+            _log(session_id, "tool_executed", tool=tool_name)
+            break  # apenas uma tool por step
+
+        messages.append({"role": "user", "content": tool_results})
+
+        if tools_called:
+            break
+
+    else:
+        _log(session_id, "max_steps_reached", steps=MAX_STEPS)
+
+    duration = int((time.time() - t0) * 1000)
+
+    if len(tools_called) == 1:
+        query_type = TOOL_TO_QUERY_TYPE.get(tools_called[0]["name"], tools_called[0]["name"])
+    elif tools_called:
+        query_type = "react_composite"
+    else:
+        query_type = "greeting"
+
+    summary_stats: dict[str, Any] = last_tool_result.get("summary", {}) if tools_called else {}
+    tabular_data: list[dict] = last_tool_result.get("tabular", []) if tools_called else []
+
+    _log(session_id, "completed", query_type=query_type, tools_called=len(tools_called), duration_ms=duration)
+
+    return AnalyticsResult(
+        query_type=query_type,
+        summary_stats=summary_stats,
+        tabular_data=tabular_data[:50],
+        data_reference_date=inp.context.data_reference_date,
+        data_source=inp.context.data_source,
+        warnings=warnings,
+        pandas_operations_log=last_tool_result.get("ops", []) if tools_called else [],
+    )

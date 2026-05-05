@@ -1,0 +1,17 @@
+.env
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+cache/*.xlsx
+cache/*.parquet
+logs/*.log
+data/*.parquet
+data/*.json
+streamlit.log
+streamlit_new.log
+.claude/
+tests/fixtures/
+*.xlsx
+_diag_*.py

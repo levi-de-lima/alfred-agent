@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alfred — TMB</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="/static/alfred-favicon.svg" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── 1. Design tokens ───────────────────────────────────────── */
+    :root {
+      --blue:            #0066FF;
+      --blue-hover:      #1A75FF;
+      --blue-20:         #CCE0FF;
+      --blue-5:          #F0F7FF;
+      --ink:             #0A0A0B;
+      --ink-60:          #555555;
+      --ink-30:          #999999;
+      --surface:         #F7F7F8;
+      --surface-2:       #F0F0EE;
+      --border:          #E4E4E7;
+      --white:           #FFFFFF;
+
+      --status-ativo-bg:        #ECFDF5;
+      --status-ativo-text:      #065F46;
+      --status-prechurn-bg:     #FFFBEB;
+      --status-prechurn-text:   #92400E;
+      --status-churn-bg:        #FEF2F2;
+      --status-churn-text:      #991B1B;
+      --status-inativo-bg:      #F7F7F8;
+      --status-inativo-text:    #666666;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--surface);
+      color: var(--ink);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── 2. Header ──────────────────────────────────────────────── */
+    #header {
+      width: 100%;
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 56px;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+    }
+
+    /* ── 3. Data badge (no header) ──────────────────────────────── */
+    #data-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--ink-60);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 4px 12px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    #data-badge.visible { opacity: 1; }
+
+    #data-badge .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    #data-badge.sharepoint .dot { background: #10B981; }
+    #data-badge.cache       .dot { background: #F59E0B; }
+
+    /* ── Chat wrapper ───────────────────────────────────────────── */
+    #chat-wrapper {
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      padding-bottom: 80px;
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+
+    /* ── Messages area ──────────────────────────────────────────── */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+    }
+
+    /* ── 6 & 7. Bubbles ─────────────────────────────────────────── */
+    .bubble-row {
+      display: flex;
+      width: 100%;
+    }
+
+    .bubble-row.user { justify-content: flex-end; }
+
+    .bubble-row.alfred {
+      justify-content: flex-start;
+      align-items: flex-start;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+    }
+
+    .bubble-row.alfred:last-child {
+      border-bottom: none;
+    }
+
+    .bubble {
+      font-size: 15px;
+      line-height: 1.6;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .bubble.user {
+      background: var(--blue);
+      color: var(--white);
+      border-radius: 18px 18px 4px 18px;
+      padding: 10px 16px;
+      max-width: 72%;
+      font-size: 15px;
+      line-height: 1.5;
+      align-self: flex-end;
+      white-space: pre-wrap;
+    }
+
+    .bubble.alfred {
+      background: none;
+      border: none;
+      border-radius: 0;
+      color: var(--ink);
+      padding: 4px 0 0 0;
+      max-width: 100%;
+      flex: 1;
+    }
+
+    /* ── 5. Alfred avatar ───────────────────────────────────────── */
+    .alfred-avatar {
+      width: 26px;
+      height: 26px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* ── Markdown dentro da bolha Alfred ────────────────────────── */
+    .bubble.alfred h1,
+    .bubble.alfred h2,
+    .bubble.alfred h3 {
+      margin: 12px 0 6px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .bubble.alfred h1 { font-size: 17px; }
+    .bubble.alfred h2 { font-size: 16px; }
+    .bubble.alfred h3 { font-size: 15px; }
+
+    .bubble.alfred p { margin: 6px 0; }
+
+    .bubble.alfred ul,
+    .bubble.alfred ol {
+      margin: 6px 0 6px 20px;
+    }
+
+    .bubble.alfred li { margin: 3px 0; }
+
+    .bubble.alfred strong { font-weight: 600; }
+
+    .bubble.alfred em { font-style: italic; }
+
+    .bubble.alfred code {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 13px;
+      font-family: "SF Mono", "Consolas", monospace;
+    }
+
+    .bubble.alfred pre {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+
+    .bubble.alfred pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 13px;
+    }
+
+    .bubble.alfred hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 12px 0;
+    }
+
+    .bubble.alfred blockquote {
+      border-left: 3px solid var(--border);
+      margin: 8px 0;
+      padding-left: 12px;
+      color: var(--ink-60);
+    }
+
+    /* Tabelas */
+    .bubble.alfred table {
+      border-collapse: collapse;
+      border-radius: 8px;
+      overflow: hidden;
+      width: 100%;
+      font-size: 13px;
+      margin: 8px 0;
+      border: 1px solid var(--border);
+    }
+
+    .bubble.alfred th {
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 600;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .bubble.alfred td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .bubble.alfred tr:last-child td { border-bottom: none; }
+
+    .bubble.alfred tr:nth-child(even) td { background: var(--surface-2); }
+
+    /* Rodapé de citação */
+    .bubble.alfred .citation {
+      font-size: 12px;
+      color: var(--ink-30);
+      margin-top: 10px;
+      font-style: italic;
+    }
+
+    /* ── 9. Status badges ───────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .badge-ativo    { background: var(--status-ativo-bg);    color: var(--status-ativo-text); }
+    .badge-prechurn { background: var(--status-prechurn-bg); color: var(--status-prechurn-text); }
+    .badge-churn    { background: var(--status-churn-bg);    color: var(--status-churn-text); }
+    .badge-inativo  { background: var(--status-inativo-bg);  color: var(--status-inativo-text); border: 1px solid var(--border); }
+
+    /* ── Loading dots ───────────────────────────────────────────── */
+    .loading-bubble {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 16px 20px;
+    }
+
+    .loading-bubble .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--ink-30);
+      animation: dot-fade 1.2s infinite;
+    }
+
+    .loading-bubble .dot:nth-child(2) { animation-delay: 0.2s; }
+    .loading-bubble .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes dot-fade {
+      0%, 80%, 100% { opacity: 0.25; }
+      40% { opacity: 1; }
+    }
+
+    /* ── 8. Input bar ───────────────────────────────────────────── */
+    #input-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--white);
+      border-top: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    #input-form {
+      width: 100%;
+      max-width: 860px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    #user-input {
+      flex: 1;
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: 24px;
+      padding: 10px 18px;
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--ink);
+      resize: none;
+      outline: none;
+      min-height: 46px;
+      max-height: 160px;
+      overflow-y: auto;
+      line-height: 1.5;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    #user-input::placeholder { color: var(--ink-30); }
+
+    #user-input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--blue-5);
+      outline: none;
+    }
+
+    #user-input:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #send-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--blue);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    #send-btn:hover  { background: var(--blue-hover); }
+    #send-btn:active { transform: scale(0.95); }
+
+    #send-btn:disabled {
+      background: var(--ink-30);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #send-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--white);
+    }
+
+    /* ── 4. Welcome screen ──────────────────────────────────────── */
+    #welcome-screen {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    #welcome-screen.fade-out { opacity: 0; }
+
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .bubble.user { max-width: 95%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header id="header">
+    <div class="header-left">
+      <img src="/static/logo_tmb.png" alt="TMB" style="height:22px; opacity:0.9;">
+      <div style="width:1px; height:18px; background:var(--border); margin:0 12px;"></div>
+      <svg width="26" height="26" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="14,2 25,8.5 25,21.5 14,28 3,21.5 3,8.5" fill="#0066FF"/>
+        <text x="14" y="15" font-family="Inter,system-ui,sans-serif" font-size="13"
+          font-weight="700" fill="white" text-anchor="middle" dominant-baseline="central">A</text>
+      </svg>
+      <span style="font-size:15px; font-weight:600; color:var(--ink); margin-left:8px; letter-spacing:-0.2px;">alfred</span>
+    </div>
+    <div class="header-right" id="data-badge-wrapper">
+      <div id="data-badge">
+        <span class="dot"></span>
+        <span id="badge-text"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Chat wrapper -->
+  <div id="chat-wrapper">
+
+    <!-- Welcome screen -->
+    <div id="welcome-screen">
+      <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:12px;">
+        <svg width="36" height="36" viewBox="0 0 28 28" fill="none">
+          <polygon points="14,2 25,8.5 25,21.5 14,28 3,21.5 3,8.5" fill="#0066FF"/>
+          <text x="14" y="15" font-family="Inter,system-ui,sans-serif" font-size="13"
+            font-weight="700" fill="white" text-anchor="middle" dominant-baseline="central">A</text>
+        </svg>
+        <span style="font-size:26px; font-weight:600; color:var(--ink); letter-spacing:-0.5px;">alfred</span>
+      </div>
+      <p style="font-size:15px; color:var(--ink-60); text-align:center; max-width:380px; line-height:1.6; margin:0 auto;">
+        Análise de churn da TMB em linguagem natural.<br>
+        Pergunte sobre produtores, gestores, clusters ou receita.
+      </p>
+    </div>
+
+    <!-- Messages -->
+    <div id="messages"></div>
+
+  </div>
+
+  <!-- Input bar -->
+  <div id="input-bar">
+    <form id="input-form" onsubmit="return false;">
+      <textarea
+        id="user-input"
+        rows="1"
+        placeholder="Pergunte sobre o churn da TMB..."
+        autocomplete="off"
+      ></textarea>
+      <button id="send-btn" type="submit" aria-label="Enviar">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
+    </form>
+  </div>
+
+  <script>
+    // ── Config ────────────────────────────────────────────────────
+    const API_URL = '/chat';
+    const SESSION_ID = crypto.randomUUID();
+
+    // ── marked.js config ──────────────────────────────────────────
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+    });
+
+    // ── DOM refs ──────────────────────────────────────────────────
+    const messagesEl = document.getElementById('messages');
+    const inputEl    = document.getElementById('user-input');
+    const sendBtn    = document.getElementById('send-btn');
+    const dataBadge  = document.getElementById('data-badge');
+    const badgeText  = document.getElementById('badge-text');
+
+    // ── Auto-resize textarea ──────────────────────────────────────
+    inputEl.addEventListener('input', () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px';
+    });
+
+    // ── Enter to send, Shift+Enter for newline ────────────────────
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    });
+
+    sendBtn.addEventListener('click', handleSend);
+
+    // ── 5. Alfred avatar SVG (hexágono) ───────────────────────────
+    const ALFRED_AVATAR_SVG = `<svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+  <polygon points="14,2 25,8.5 25,21.5 14,28 3,21.5 3,8.5" fill="#0066FF"/>
+  <text x="14" y="15" font-family="Inter,system-ui,sans-serif" font-size="13"
+    font-weight="700" fill="white" text-anchor="middle" dominant-baseline="central">A</text>
+</svg>`;
+
+    // ── 9. Mapa de status para badges ─────────────────────────────
+    const statusMap = {
+      'ativo':     'badge-ativo',
+      'pré-churn': 'badge-prechurn',
+      'pre-churn': 'badge-prechurn',
+      'churn':     'badge-churn',
+      'inativo':   'badge-inativo',
+    };
+
+    // ── Add message bubble ────────────────────────────────────────
+    function addBubble(role, content, citation) {
+      const row = document.createElement('div');
+      row.className = `bubble-row ${role}`;
+
+      if (role === 'alfred') {
+        const avatar = document.createElement('div');
+        avatar.className = 'alfred-avatar';
+        avatar.innerHTML = ALFRED_AVATAR_SVG;
+        row.appendChild(avatar);
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = `bubble ${role}`;
+
+      if (role === 'alfred') {
+        // Split off citation footer (last line starting with "---\n_")
+        let mainContent = content;
+        let citationText = citation || null;
+
+        // If citation is embedded in markdown (--- separator), extract it
+        const sep = '\n\n---\n_';
+        const sepIdx = content.lastIndexOf(sep);
+        if (sepIdx !== -1) {
+          mainContent = content.slice(0, sepIdx);
+          citationText = content.slice(sepIdx + sep.length).replace(/_$/, '').trim();
+        }
+
+        bubble.innerHTML = marked.parse(mainContent);
+
+        // Aplica badges de status em células de tabela
+        bubble.querySelectorAll('td').forEach(td => {
+          const val = td.textContent.trim().toLowerCase();
+          if (statusMap[val]) {
+            td.innerHTML = `<span class="badge ${statusMap[val]}">${td.textContent.trim()}</span>`;
+          }
+        });
+
+        // Inicializa Chart.js em blocos alfred-chart
+        bubble.querySelectorAll('.alfred-chart').forEach(el => {
+          try {
+            let configStr = el.getAttribute('data-config');
+            // Substitui placeholder de sufixo por função JS real
+            configStr = configStr.replace(
+              /"callback":"__SUFFIX_([^"]*?)__"/g,
+              (_, sfx) => `"callback": function(v){ return v + '${sfx}'; }`
+            );
+            const config = (new Function('return ' + configStr))();
+            const canvas = el.querySelector('canvas');
+            new Chart(canvas, config);
+          } catch(e) {
+            console.warn('alfred-chart init failed', e);
+          }
+        });
+
+        if (citationText) {
+          const cit = document.createElement('p');
+          cit.className = 'citation';
+          cit.textContent = citationText;
+          bubble.appendChild(cit);
+        }
+      } else {
+        bubble.textContent = content;
+      }
+
+      row.appendChild(bubble);
+      messagesEl.appendChild(row);
+      scrollToBottom();
+      return row;
+    }
+
+    // ── Loading indicator ─────────────────────────────────────────
+    function addLoading() {
+      const row = document.createElement('div');
+      row.className = 'bubble-row alfred';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'alfred-avatar';
+      avatar.innerHTML = ALFRED_AVATAR_SVG;
+      row.appendChild(avatar);
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble alfred loading-bubble';
+      bubble.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+
+      row.appendChild(bubble);
+      messagesEl.appendChild(row);
+      scrollToBottom();
+      return { row, bubble };
+    }
+
+    // 1. Bug fix: era --color-text-secondary (indefinida) → --ink-30
+    function setLoadingMessage(bubble, text) {
+      bubble.innerHTML = `<span style="color:var(--ink-30);font-size:13px">${text}</span>`;
+    }
+
+    // ── Scroll to bottom ──────────────────────────────────────────
+    function scrollToBottom() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    // ── Set loading state ─────────────────────────────────────────
+    function setLoading(loading) {
+      inputEl.disabled = loading;
+      sendBtn.disabled = loading;
+    }
+
+    // ── Update data badge ─────────────────────────────────────────
+    function updateBadge(citation) {
+      if (!citation) return;
+      const isSharePoint = citation.toLowerCase().includes('sharepoint');
+      dataBadge.className = 'data-badge visible ' + (isSharePoint ? 'sharepoint' : 'cache');
+      dataBadge.id = 'data-badge';
+      dataBadge.classList.add('visible');
+      if (isSharePoint) {
+        dataBadge.classList.remove('cache');
+        dataBadge.classList.add('sharepoint');
+      } else {
+        dataBadge.classList.remove('sharepoint');
+        dataBadge.classList.add('cache');
+      }
+      badgeText.textContent = citation;
+    }
+
+    // ── Main send handler ─────────────────────────────────────────
+    async function handleSend() {
+      const message = inputEl.value.trim();
+      if (!message) return;
+
+      // Dismiss welcome screen on first message
+      dismissWelcome();
+
+      // Show user bubble
+      addBubble('user', message);
+
+      // Clear input
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+
+      // Disable input and show loading
+      setLoading(true);
+      const { row: loadingRow, bubble: loadingBubble } = addLoading();
+
+      const t15 = setTimeout(() => setLoadingMessage(loadingBubble,
+        '<i>Servidor da Claude está sobrecarregado, isso pode demorar um pouco...</i>'), 15000);
+      const t60 = setTimeout(() => setLoadingMessage(loadingBubble,
+        'Ainda processando... Aguarde mais um momento.'), 60000);
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, session_id: SESSION_ID }),
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        // Remove loading
+        clearTimeout(t15); clearTimeout(t60);
+        loadingRow.remove();
+
+        if (data.error) {
+          addBubble('alfred', data.error);
+        } else {
+          addBubble('alfred', data.markdown_response);
+          updateBadge(data.data_citation);
+        }
+
+      } catch (err) {
+        clearTimeout(t15); clearTimeout(t60);
+        loadingRow.remove();
+        addBubble('alfred', 'Desculpe, ocorreu um erro ao processar sua pergunta. Tente novamente.');
+        console.error('Erro na requisição:', err);
+      } finally {
+        setLoading(false);
+        inputEl.focus();
+      }
+    }
+
+    // ── Welcome screen dismiss ────────────────────────────────────
+    function dismissWelcome() {
+      const welcome = document.getElementById('welcome-screen');
+      if (!welcome) return;
+      welcome.classList.add('fade-out');
+      setTimeout(() => welcome.remove(), 300);
+    }
+
+    // ── Welcome message ───────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+      inputEl.focus();
+
+      // Load health to get data badge
+      fetch('/health')
+        .then(r => r.json())
+        .then(d => {
+          if (d.status === 'ok') {
+            const month = new Date(d.data_reference_date);
+            const label = `${String(month.getMonth() + 1).padStart(2,'0')}/${month.getFullYear()}`;
+            const source = d.data_source === 'sharepoint' ? 'SharePoint' : 'cache local';
+            updateBadge(`Dados de ${label} — ${source}`);
+          }
+        })
+        .catch(() => {});
+    });
+  </script>
+</body>
+</html>
