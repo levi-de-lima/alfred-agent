@@ -178,19 +178,6 @@ def w_pedir_identidade(ctx: ToolContext, pedido_pendente=None):
     return _run(p, ctx)
 
 
-def w_sql_adhoc(ctx: ToolContext, pergunta: str):
-    """Fallback SQL via DuckDB para perguntas ad-hoc sem métrica de negócio específica."""
-    try:
-        from agents.sql_fallback import executar_sql_adhoc
-        return executar_sql_adhoc(pergunta, ctx.vendas, ctx.produtores)
-    except Exception as exc:
-        return {
-            "query_type": "sql_adhoc",
-            "summary": {"erro": str(exc)},
-            "tabular": [],
-            "ops": [f"SQL fallback falhou: {exc}"],
-        }
-
 
 # ---------------------------------------------------------------------------
 # Dispatcher: nome da tool → função wrapper
@@ -214,7 +201,6 @@ TOOL_FUNCTIONS: dict[str, Any] = {
     "cohort_closer_churn":  w_cohort_closer_churn,
     "saudacao":             w_saudacao,
     "pedir_identidade":     w_pedir_identidade,
-    "sql_adhoc":            w_sql_adhoc,
 }
 
 # Mapeamento tool → query_type para o ReportAgent saber como renderizar casos especiais
@@ -241,7 +227,6 @@ TOOL_AREAS: dict[str, str] = {
     "cohort": "churn",
     "resumo_churn": "churn",
     "churn_streak": "churn",
-    "sql_adhoc": "churn",
     # closer (2)
     "pipeline_closer": "closer",
     "detalhe_deal": "closer",
@@ -556,21 +541,6 @@ CLAUDE_TOOLS: list[dict] = [
             "properties": {
                 "pedido_pendente": {"type": "string", "description": "Tipo de relatório que o usuário pediu"},
             },
-        },
-    },
-    {
-        "name": "sql_adhoc",
-        "description": (
-            "Fallback para perguntas ad-hoc que não se encaixam em nenhuma ferramenta acima. "
-            "Use apenas como último recurso para perguntas simples de filtro/ordenação "
-            "sem métricas de negócio específicas (taxa de churn, LTV, etc.)."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "pergunta": {"type": "string", "description": "A pergunta original do usuário em linguagem natural"},
-            },
-            "required": ["pergunta"],
         },
     },
 ]

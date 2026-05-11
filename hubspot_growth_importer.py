@@ -108,15 +108,15 @@ PROPERTIES = [
     "utm_campaign_last_hr",
     "utm_medium_last_hr",
     "utm_content_last_hr",
+    "utm_term_last_hr",
     # Flags e metadados
     "lead_ativado_por_ia",
     "auxiliar_criacao_manual_de_closer",
-    "hs_lead_is_qualified",
     "hs_lead_is_disqualified",
     "hs_lead_disqualification_reason",
     "hs_lead_associated_deals_count",
     "hs_lead_closed_won_deals_amount",
-    "data_de_criacao_lp",
+    "data_de_fechamento__tmb",
 ]
 
 # Score thresholds (referência)
@@ -293,6 +293,39 @@ def _to_int(value) -> int | None:
     return None if f is None else int(f)
 
 
+_owner_cache: dict[str, str] = {}
+
+
+def _resolve_owner(owner_id: str | None) -> str | None:
+    if not owner_id:
+        return None
+    if owner_id in _owner_cache:
+        return _owner_cache[owner_id]
+    try:
+        r = requests.get(
+            f"{HUBSPOT_BASE_URL}/crm/v3/owners/{owner_id}",
+            headers=_headers(),
+            timeout=10,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            name = f"{data.get('firstName', '')} {data.get('lastName', '')}".strip()
+            _owner_cache[owner_id] = name or owner_id
+        else:
+            _owner_cache[owner_id] = owner_id
+    except Exception:
+        _owner_cache[owner_id] = owner_id
+    return _owner_cache[owner_id]
+
+
+def _calc_status(stage_id: str | None) -> str:
+    if stage_id == "qualified_stage_id_233247981":
+        return "Ganho"
+    if stage_id in ("unqualified_stage_id_1675714327", "1242729233"):
+        return "Perda"
+    return "Aberto"
+
+
 def normalize_leads(raw_leads: list[dict]) -> pd.DataFrame:
     """Transforma a lista de objetos brutos da API no schema final."""
     rows = []
@@ -315,8 +348,8 @@ def normalize_leads(raw_leads: list[dict]) -> pd.DataFrame:
             "stage_atual_id":        prop("hs_pipeline_stage"),
             "dt_criacao":            _to_dt(prop("hs_createdate")),
             "dt_ultima_atualizacao": _to_dt(prop("hs_lastmodifieddate")),
-            "origem_lp":             prop("id_do_registro_lp"),
-            "dt_criacao_lp":         _to_date(prop("data_de_criacao_lp")),
+            "dt_fechamento_tmb":     _to_dt(prop("data_de_fechamento__tmb")),
+            "proprietario":          _resolve_owner(prop("hubspot_owner_id")),
 
             # ── Qualificação e LeadScore ───────────────────────────────────
             "vende_info":              prop("voce_vende_cursos_online_e_ou_mentorias_e_ou_imersoes_"),
@@ -332,7 +365,6 @@ def normalize_leads(raw_leads: list[dict]) -> pd.DataFrame:
             "cluster_faturamento":     prop("cluster_faturamento_da_empresa"),
 
             # ── Flags de qualificação ──────────────────────────────────────
-            "hs_lead_is_qualified":         prop("hs_lead_is_qualified"),
             "motivo_desqualificacao":       prop("hs_lead_disqualification_reason"),
 
             # ── Timeline TMB ───────────────────────────────────────────────
@@ -360,6 +392,7 @@ def normalize_leads(raw_leads: list[dict]) -> pd.DataFrame:
             "utm_campaign": prop("utm_campaign_last_hr"),
             "utm_medium":   prop("utm_medium_last_hr"),
             "utm_content":  prop("utm_content_last_hr"),
+            "utm_term":     prop("utm_term_last_hr"),
 
             # ── Metadados ──────────────────────────────────────────────────
             "lead_ativado_por_ia":    prop("lead_ativado_por_ia"),
@@ -373,19 +406,10 @@ def normalize_leads(raw_leads: list[dict]) -> pd.DataFrame:
 
     print("[HubSpot Growth] Calculando classificações...")
 
-    # ── Pipeline e stage legíveis ────────────────────────────────────────────
+    # ── Pipeline, stage e status legíveis ───────────────────────────────────
     df["pipeline_nome"] = df["pipeline_id"].map(PIPELINES).fillna("Desconhecido")
     df["stage_atual_nome"] = df["stage_atual_id"].map(ALL_STAGES).fillna("Desconhecido")
-
-    # ── MQL / SQL ────────────────────────────────────────────────────────────
-    df["is_mql"] = df["cluster_leadscore"].isin(["A", "B", "C"]).astype(int)
-    df["is_sql"] = df["cluster_leadscore"].isin(["A", "B"]).astype(int)
-    df["is_desqualificado"] = (
-        (df["cluster_leadscore"] == "D") |
-        (df["vende_info"].str.contains("Não", na=False))
-    ).astype(int)
-    df["is_qualificado"] = (df["hs_lead_is_qualified"] == "true").astype(int)
-    df = df.drop(columns=["hs_lead_is_qualified"])
+    df["status_lead"] = df["stage_atual_id"].apply(_calc_status)
 
     # ── Métricas de tempo derivadas ──────────────────────────────────────────
     df["dias_novo_ate_ativado"]       = (df["dt_ativado"]       - df["dt_novo_lead"]).dt.days
@@ -394,9 +418,6 @@ def normalize_leads(raw_leads: list[dict]) -> pd.DataFrame:
     df["dias_novo_ate_qualificado"]   = (df["dt_qualificado"]   - df["dt_novo_lead"]).dt.days
     df["dias_novo_ate_desqualificado"]= (df["dt_desqualificado"]- df["dt_novo_lead"]).dt.days
 
-    # ── Metadados temporais ──────────────────────────────────────────────────
-    df["mes_ano"] = df["dt_criacao"].dt.to_period("M").astype(str)
-    df.loc[df["dt_criacao"].isna(), "mes_ano"] = None
     df["dt_extracao"] = pd.Timestamp.now()
 
     # ── Reordenar colunas ────────────────────────────────────────────────────
@@ -404,14 +425,14 @@ def normalize_leads(raw_leads: list[dict]) -> pd.DataFrame:
         # Identificação
         "lead_id", "nome", "email", "telefone", "contact_id", "deal_id_closer",
         "pipeline_id", "pipeline_nome", "stage_atual_id", "stage_atual_nome",
-        "dt_criacao", "dt_ultima_atualizacao", "mes_ano", "origem_lp", "dt_criacao_lp",
+        "status_lead", "proprietario",
+        "dt_criacao", "dt_ultima_atualizacao", "dt_fechamento_tmb",
         # Qualificação e LeadScore
         "vende_info", "area_atuacao", "faturamento_ultimo_ano", "tempo_implementacao",
         "score_vende_info", "score_area_atuacao", "score_faturamento_ano",
         "score_tempo_implantacao", "score_total_lp",
         "cluster_leadscore", "cluster_faturamento",
-        # Classificação MQL/SQL
-        "is_mql", "is_sql", "is_desqualificado", "is_qualificado", "motivo_desqualificacao",
+        "motivo_desqualificacao",
         # Timeline TMB
         "dt_novo_lead", "dt_backlog_leadscore", "dt_ativado", "dt_interagiu",
         "dt_agendado", "dt_qualificado", "dt_desqualificado",
@@ -424,7 +445,7 @@ def normalize_leads(raw_leads: list[dict]) -> pd.DataFrame:
         "dias_novo_ate_desqualificado",
         "tempo_em_ativado_ms", "tempo_em_interagiu_ms",
         # UTMs
-        "utm_source", "utm_campaign", "utm_medium", "utm_content",
+        "utm_source", "utm_campaign", "utm_medium", "utm_content", "utm_term",
         # Metadados
         "lead_ativado_por_ia", "criacao_manual_closer",
         "qtd_deals_associados", "valor_deals_ganhos", "dt_extracao",
@@ -452,17 +473,14 @@ def fetch_growth_leads() -> pd.DataFrame:
 
     n_tmb    = int((df["pipeline_nome"] == "Leads TMB").sum())
     n_tmr    = int((df["pipeline_nome"] == "Leads TMR").sum())
-    n_mql    = int(df["is_mql"].sum())
-    n_sql    = int(df["is_sql"].sum())
-    n_desq   = int(df["is_desqualificado"].sum())
+    n_ganho  = int((df["status_lead"] == "Ganho").sum())
+    n_perda  = int((df["status_lead"] == "Perda").sum())
     n_closer = int(df["deal_id_closer"].notna().sum())
 
     print(f"[HubSpot Growth] --- Resumo ---")
     print(f"[HubSpot Growth] Total de leads: {n}")
     print(f"[HubSpot Growth] Pipeline Leads TMB: {n_tmb} | Leads TMR: {n_tmr}")
-    print(f"[HubSpot Growth] MQLs (cluster A/B/C): {n_mql} ({pct(n_mql)})")
-    print(f"[HubSpot Growth] SQLs (cluster A/B): {n_sql} ({pct(n_sql)})")
-    print(f"[HubSpot Growth] Desqualificados: {n_desq} ({pct(n_desq)})")
+    print(f"[HubSpot Growth] Ganhos: {n_ganho} ({pct(n_ganho)}) | Perdas: {n_perda} ({pct(n_perda)})")
     print(f"[HubSpot Growth] Com deal_id_closer: {n_closer} ({pct(n_closer)})")
 
     return df

@@ -70,6 +70,12 @@ PROPERTIES = [
     "numero_de_telefone",
     "lead_score_final",
     "jornada_do_heroi",
+    # Perguntas de qualificação
+    "qual_seu_modelo_de_vendas_",
+    "qual_e_o_seu_principal_objetivo_ao_buscar_uma_parceria_com_a_tmb_",
+    "qual_estrutura_da_sua_equipe_atualmente_",
+    "qual_sua_experiencia_com_boleto_parcelado_",
+    "onde_voce_vende_os_cursos_online_",
 ]
 
 STAGE_NAMES = {
@@ -235,6 +241,13 @@ def normalize_deals(raw_deals: list[dict]) -> pd.DataFrame:
             # ── Metadados ───────────────────────────────────────────────────
             "telefone":   prop("numero_de_telefone"),
             "lead_score": _to_float(prop("lead_score_final")),
+
+            # ── Perguntas de qualificação ────────────────────────────────────
+            "modelo_vendas":         prop("qual_seu_modelo_de_vendas_"),
+            "objetivo_parceria_tmb": prop("qual_e_o_seu_principal_objetivo_ao_buscar_uma_parceria_com_a_tmb_"),
+            "estrutura_operacional": prop("qual_estrutura_da_sua_equipe_atualmente_"),
+            "experiencia_boleto":    prop("qual_sua_experiencia_com_boleto_parcelado_"),
+            "onde_vende":            prop("onde_voce_vende_os_cursos_online_"),
         }
         rows.append(row)
 
@@ -281,6 +294,9 @@ def normalize_deals(raw_deals: list[dict]) -> pd.DataFrame:
         "dt_primeiro_contato", "dt_1a_conexao", "canal_1a_conexao",
         "qtd_dias_atividade", "qtd_contatos_por_dia", "contacte_rate",
         "taxa_conexao", "taxa_agendamento", "taxa_fechamento",
+        # Perguntas de qualificação
+        "modelo_vendas", "objetivo_parceria_tmb", "estrutura_operacional",
+        "experiencia_boleto", "onde_vende",
         # Metadados
         "telefone", "lead_score", "mes_ano", "dt_extracao",
     ]
