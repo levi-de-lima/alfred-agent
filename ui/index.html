@@ -734,12 +734,13 @@
       gap: 4px;
       padding: 10px 12px;
       border: none;
+      border-left: 3px solid transparent;
       border-radius: var(--radius-md);
       background: transparent;
       cursor: pointer;
       text-align: left;
       color: var(--text-primary);
-      transition: background var(--duration-fast);
+      transition: background var(--duration-fast), border-left-color var(--duration-fast);
       position: relative;
     }
 
@@ -747,7 +748,7 @@
 
     .chat-item.active {
       background: var(--brand-accent-light);
-      box-shadow: inset 2px 0 0 var(--brand-accent);
+      border-left-color: var(--brand-accent);
     }
 
     .chat-item-title {
