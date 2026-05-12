@@ -1,90 +1,108 @@
-# Alfred — TMB Churn Analyzer
+<div align="center">
 
-Agente conversacional multi-camada para análise de churn, LTV e funil de aquisição da **TMB** (fintech de serviços financeiros para infoprodutores).
+# Alfred
 
-Alfred recebe perguntas em linguagem natural, identifica a intenção, carrega os dados certos e devolve respostas estruturadas com métricas de negócio — sem SQL, sem dashboards, sem complexidade.
+**O analista de dados do comercial da TMB.**
+
+Pergunte em linguagem natural sobre churn, pipeline, leads ou receita —
+o Alfred entende, busca os dados certos e devolve a análise pronta.
+
+<img src="images/interface-white.png" alt="Alfred — tela inicial (light)" width="100%" />
+
+</div>
 
 ---
 
-## Arquitetura
+## Por que o Alfred existe
+
+A **TMB** é uma fintech de serviços financeiros para infoprodutores (boleto e
+Pix parcelado em lançamentos). A operação comercial roda em duas frentes:
+
+- **Retenção** — manter a carteira ativa, controlar churn, acompanhar LTV.
+- **Aquisição** — alimentar o funil com novos parceiros via Closer e Growth.
+
+A análise dessas frentes vivia em **Metabase, HubSpot e planilhas**. Cada
+pergunta exigia abrir três ferramentas, escrever SQL, cruzar exportações.
+O time perdia horas para chegar a respostas que cabem em um parágrafo.
+
+O Alfred substitui esse trabalho por uma conversa. Você pergunta:
+
+> *"Como está a taxa de churn dos últimos 6 meses?"*
+> *"Quem entrou em pré-churn em abril na carteira da Rafaela?"*
+> *"Dos produtores que fecharam pelo Closer no Q1, quantos churnaram?"*
+
+E recebe uma resposta direta em markdown — com a metodologia TMB,
+o filtro temporal correto e a regra de negócio aplicada.
+
+---
+
+## O que o Alfred faz
+
+| Frente | Perguntas que resolve |
+|---|---|
+| **Churn / Retenção** | Taxa de churn por gestor · transições de status · resumo do mês · streak de gestores acima da meta · valor em risco |
+| **LTV e ciclos de vida** | LTV por cluster/gestor · reativações · ciclos de vida · cohorts de primeira venda |
+| **Pipeline Closer (HubSpot)** | KPIs do pipeline · ciclo mediano · performance por closer · motivos de perda · detalhe de um deal |
+| **Funil Growth (HubSpot)** | Total de leads · MQL/SQL · taxas de conversão · tempo por estágio |
+| **Jornada cross-data** | Linha do tempo Growth → Closer → cliente TMB → churn de um produtor específico |
+
+Para a lista completa de tools registradas, ver `agents/tools.py`.
+
+---
+
+## Arquitetura em uma imagem
 
 ```mermaid
-graph TB
-    User([Usuário]) --> FastAPI["FastAPI · POST /chat\nui/app.py"]
-    FastAPI --> Orchestrator["Orchestrator\nagents/orchestrator.py"]
+flowchart LR
+    User([👤 Usuário])
 
-    Orchestrator --> ContextAgent["Context Agent\nClassifica intenção · período · identidade\nagents/context_agent.py"]
-    Orchestrator --> DataAgent["Data Agent\nCarrega DataFrames\nagents/data_agent.py"]
+    User --> API[FastAPI<br/>POST /chats/&#123;id&#125;/messages]
+    API --> Ctx[ContextAgent<br/><i>Haiku</i>]
+    Ctx --> Data[DataAgent]
 
-    DataAgent --> Metabase[(Metabase API\nfVendas · dProdutores)]
-    DataAgent --> Cache[(cache/*.parquet\nfallback local)]
-    DataAgent --> HSData[(data/hs_*.parquet\nHubSpot pré-cacheado)]
+    Data --> Specialists{áreas?}
+    Specialists -->|retention| Ret[RetentionAgent<br/><i>Sonnet · ReAct</i>]
+    Specialists -->|acquisition| Acq[AcquisitionAgent<br/><i>Sonnet · ReAct</i>]
 
-    Orchestrator --> RetentionAgent["Retention Agent\nChurn · LTV · Cohort\nagents/retention_agent.py"]
-    Orchestrator --> AcquisitionAgent["Acquisition Agent\nCloser · Growth Funil\nagents/acquisition_agent.py"]
+    Ret --> Report[ReportAgent<br/><i>Sonnet</i>]
+    Acq --> Report
+    Report --> User
 
-    RetentionAgent --> Analytics["Analytics Engine\nagents/analytics_agent.py"]
-    AcquisitionAgent --> Analytics
-    Analytics --> Tools["Tool Wrappers\nagents/tools.py"]
-
-    Orchestrator --> ReportAgent["Report Agent\nFormata resposta markdown\nagents/report_agent.py"]
-    ReportAgent --> User
-
-    HubSpotAPI[(HubSpot API)] -->|refresh manual| Importers["hubspot_importer.py\nhubspot_growth_importer.py"]
-    Importers --> HSData
+    Data -.lê.-> Sources[(Metabase · HubSpot<br/>+ cache parquet)]
 ```
 
-### Fluxo de uma pergunta
+**Quatro estágios:**
 
-1. **FastAPI** recebe `POST /chat` com `{message, session_id}`
-2. **Orchestrator** coordena o pipeline completo
-3. **Context Agent** classifica a intenção (churn / closer / growth / greeting), extrai período e resolve identidade do usuário
-4. **Data Agent** carrega `fVendas` e `dProdutores` do Metabase (ou do cache parquet como fallback)
-5. **Retention Agent** ou **Acquisition Agent** executa um loop ReAct com as tools registradas em `tools.py`
-6. **Analytics Engine** despacha para funções pandas específicas (`_calc_*`) e devolve `summary + tabular`
-7. **Report Agent** formata o resultado como markdown legível via Claude
+1. **Classificar** — o ContextAgent (Haiku) lê a pergunta e devolve
+   um `IntentContract`: quais áreas (retention/acquisition/ambas),
+   período resolvido, identidade do gestor, regras de negócio aplicáveis.
+2. **Carregar** — o DataAgent traz apenas o que a intenção exige.
+   Metabase para retention, parquet do HubSpot para acquisition.
+3. **Analisar** — Retention e/ou Acquisition rodam um loop ReAct (Sonnet)
+   chamando tools que executam pandas via `analytics_agent`. Para perguntas
+   mistas, os dois rodam em paralelo.
+4. **Formatar** — o ReportAgent transforma o `AnalyticsResult` em markdown
+   em pt-BR, com tabelas e narrativa.
+
+Para o detalhamento de cada agente, regras de status, modelos e estado de
+sessão, ver [CLAUDE.md](CLAUDE.md).
 
 ---
 
-## Estrutura de arquivos
+## Interface
 
-```
-alfred-agent/
-├── ui/
-│   ├── app.py                  # FastAPI backend (entry point)
-│   ├── index.html              # Chat UI
-│   └── static/                 # Favicon, logo
-│
-├── agents/
-│   ├── orchestrator.py         # Pipeline principal
-│   ├── context_agent.py        # Classificação de intenção e contexto
-│   ├── data_agent.py           # Carregamento e empacotamento de dados
-│   ├── retention_agent.py      # ReAct loop — análise de churn/LTV/cohort
-│   ├── acquisition_agent.py    # ReAct loop — Closer pipeline e Growth funil
-│   ├── analytics_agent.py      # Engine de cálculo pandas (_calc_* functions)
-│   ├── hubspot_analytics.py    # Cálculos específicos do HubSpot
-│   ├── report_agent.py         # Formatação da resposta final
-│   └── tools.py                # Wrappers de tools para o ReAct (CLAUDE_TOOLS)
-│
-├── data/
-│   ├── hs_closer_pipeline.parquet   # Cache HubSpot Closer (gerado por hubspot_importer.py)
-│   └── hs_growth_leads.parquet      # Cache HubSpot Growth (gerado por hubspot_growth_importer.py)
-│
-├── cache/                      # Parquet de fVendas e dProdutores (fallback Metabase)
-├── logs/                       # Logs rotativos da aplicação
-│
-├── config.py                   # Settings + logger (carrega .env)
-├── data_loader.py              # Cliente Metabase API com fallback para parquet
-├── prompts.py                  # System prompts de todos os agentes
-│
-├── hubspot_importer.py         # Utilitário: atualiza cache Closer → data/
-├── hubspot_growth_importer.py  # Utilitário: atualiza cache Growth → data/
-├── refresh_hubspot.py          # Orquestra os dois importers acima
-│
-├── requirements.txt
-├── Procfile                    # Deploy Heroku/Railway: uvicorn ui.app:app
-└── .env.example
-```
+<div align="center">
+
+| Light | Dark |
+|---|---|
+| <img src="images/interface-white.png" alt="Interface light" width="100%" /> | <img src="images/interface-dark.png" alt="Interface dark" width="100%" /> |
+
+</div>
+
+O frontend é uma SPA em HTML + CSS + JS vanilla servida pelo FastAPI.
+Tem histórico de conversas (sidebar com busca), troca de tema light/dark e
+título de chat gerado automaticamente pelo Haiku. Identidade visual em
+`DESIGN.md` e `design/`.
 
 ---
 
@@ -93,15 +111,57 @@ alfred-agent/
 | Camada | Tecnologia |
 |---|---|
 | Backend | FastAPI + Uvicorn |
-| LLM | Anthropic Claude (Sonnet 4.x para análise, Haiku para classificação) |
-| Dados operacionais | Metabase API → pandas DataFrames |
+| LLMs | Anthropic Claude — **Sonnet 4.x** (análise) + **Haiku 4.5** (classificação) |
+| Dados de retenção | Metabase API (cards 189 e 194) → pandas |
 | Dados de aquisição | HubSpot API → parquet local |
-| Manipulação | pandas, openpyxl |
-| Config | python-dotenv |
+| Cache | Parquet em `cache/` com TTL configurável (padrão 4h) |
+| Persistência de chats | SQLite (`data/chats.db`) |
+| Frontend | HTML/CSS/JS vanilla, tokens em `design/` |
 
 ---
 
-## Como rodar localmente
+## Estrutura de arquivos
+
+```
+.
+├── ui/
+│   ├── app.py                  FastAPI · entry point (uvicorn ui.app:app)
+│   ├── index.html              Frontend (SPA single-file)
+│   ├── storage.py              SQLite — histórico de chats
+│   └── static/                 Favicon, logo, assets
+│
+├── agents/
+│   ├── orchestrator.py         Pipeline principal
+│   ├── context_agent.py        Classificação de intenção (Haiku)
+│   ├── data_agent.py           Empacotamento de DataFrames
+│   ├── retention_agent.py      ReAct — churn, LTV, cohort
+│   ├── acquisition_agent.py    ReAct — Closer, Growth, jornada
+│   ├── analytics_agent.py      Engine pandas (_calc_* functions)
+│   ├── hubspot_analytics.py    Cálculos específicos do HubSpot
+│   ├── tools.py                Wrappers de tools (CLAUDE_TOOLS, TOOL_AREAS)
+│   └── report_agent.py         Formatação markdown final
+│
+├── design/                     Tokens, logo, regras visuais
+├── data/                       Parquets HubSpot + chats.db
+├── cache/                      Parquets de fVendas/dProdutores
+├── logs/                       Logs rotativos
+├── images/                     Screenshots usados neste README
+│
+├── data_loader.py              Metabase API + cache parquet
+├── hubspot_importer.py         Refresh Closer
+├── hubspot_growth_importer.py  Refresh Growth
+├── refresh_hubspot.py          Roda os dois importers acima
+├── prompts.py                  System prompts de todos os agentes
+├── config.py                   Settings + logger
+├── CLAUDE.md                   Contexto completo para o agente Claude
+├── DESIGN.md                   Manifesto da identidade visual
+├── Procfile                    Deploy (Heroku/Railway)
+└── requirements.txt
+```
+
+---
+
+## Rodando localmente
 
 ### 1. Variáveis de ambiente
 
@@ -114,18 +174,16 @@ cp .env.example .env
 | Variável | Obrigatória | Descrição |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | ✅ | Chave da API Anthropic |
-| `METABASE_URL` | ✅ | URL da instância Metabase (ex: `https://metabase.tmb.com.br`) |
+| `METABASE_URL` | ✅ | URL da instância Metabase |
 | `METABASE_USER` | ✅ | E-mail de login no Metabase |
 | `METABASE_PASSWORD` | ✅ | Senha do Metabase |
-| `METABASE_DB_ID` | — | ID do banco no Metabase (padrão: `3`) |
-| `METABASE_TABLE_VENDAS` | — | ID da tabela fVendas (padrão: `645`) |
-| `METABASE_TABLE_PRODUTORES` | — | ID da tabela dProdutores (padrão: `626`) |
-| `HUBSPOT_TOKEN` | — | Token da API HubSpot (só para refresh de dados) |
-| `CLAUDE_MODEL` | — | Modelo principal (padrão: `claude-sonnet-4-6`) |
-| `CLAUDE_HAIKU_MODEL` | — | Modelo de roteamento (padrão: `claude-haiku-4-5-20251001`) |
-| `CACHE_DIR` | — | Pasta de cache parquet (padrão: `./cache`) |
-| `CACHE_MAX_AGE_HOURS` | — | TTL do cache em horas (padrão: `4`) |
-| `LOG_DIR` | — | Pasta de logs (padrão: `./logs`) |
+| `HUBSPOT_TOKEN` | — | Token HubSpot (só para `refresh_hubspot.py`) |
+| `CLAUDE_MODEL` | — | Modelo de análise (padrão `claude-sonnet-4-6`) |
+| `CLAUDE_HAIKU_MODEL` | — | Modelo de classificação (padrão `claude-haiku-4-5-20251001`) |
+| `CACHE_DIR` | — | Pasta do cache parquet (padrão `./cache`) |
+| `CACHE_MAX_AGE_HOURS` | — | TTL do cache em horas (padrão `4`) |
+| `LOG_DIR` | — | Pasta de logs (padrão `./logs`) |
+| `LOG_LEVEL` | — | Nível de log (padrão `INFO`) |
 
 ### 2. Instalar dependências
 
@@ -133,60 +191,4 @@ cp .env.example .env
 pip install -r requirements.txt
 ```
 
-### 3. Iniciar o servidor
-
-```bash
-uvicorn ui.app:app --reload --port 8000
-```
-
-Acesse [http://localhost:8000](http://localhost:8000)
-
----
-
-## Refresh de dados HubSpot
-
-Os arquivos `data/hs_closer_pipeline.parquet` e `data/hs_growth_leads.parquet` são gerados offline e lidos pela aplicação como cache estático. Para atualizá-los:
-
-```bash
-python refresh_hubspot.py
-```
-
-Ou individualmente:
-
-```bash
-python hubspot_importer.py         # atualiza Closer pipeline
-python hubspot_growth_importer.py  # atualiza Growth leads
-```
-
-Recomenda-se rodar semanalmente (ou antes de análises de funil relevantes).
-
----
-
-## Dados e regras de negócio
-
-### Tabelas principais
-
-| Tabela | Chave | Descrição |
-|---|---|---|
-| `fVendas` | `Código`, `Data` | Uma linha por produtor por mês. Contém `Status` e `Valor`. |
-| `dProdutores` | `Código` | Dimensão de produtores: `Cluster`, `Gestor`, `Data Parceria`. |
-
-### Status dos produtores
-
-- **Ativo** — vendeu no período recente
-- **Pré-churn** — em risco (última venda há algum tempo)
-- **Churn** — saiu da base (vendeu mas parou)
-- **Inativo** — nunca vendeu (≠ Churn)
-
-### Regra de ouro temporal
-
-O histórico completo já está em `fVendas` linha a linha. Consultas de meses passados filtram `Data` pelo mês/ano exato — nunca assumem o mês mais recente quando um período específico é solicitado.
-
----
-
-## Deploy
-
-```
-# Procfile (Heroku / Railway)
-web: uvicorn ui.app:app --host 0.0.0.0 --port $PORT
-```
+###

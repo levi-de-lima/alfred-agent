@@ -1,109 +1,120 @@
-# CLAUDE.md — Contexto do Projeto TMB Churn Analyzer
+# CLAUDE.md — Contexto do projeto Alfred (TMB Churn Analyzer)
 
-## Sobre a TMB
-Fintech que presta serviços financeiros para infoprodutores.
-Produto principal: suporte de cobrança (boleto e pix parcelado) em lançamentos.
+> Este arquivo é a fonte de verdade para o agente Claude que trabalha neste
+> repositório. Descreve **o que o Alfred é**, **como o pipeline funciona de fato**
+> e **quais regras precisam ser respeitadas** em qualquer alteração.
 
-## Sistema de design
+---
 
-Antes de fazer qualquer alteração visual em `ui/` (HTML, CSS, novos componentes,
-novas páginas/features), LER nesta ordem:
+## 1. Sobre a TMB e o problema
 
-1. `DESIGN.md` (raiz) — manifesto da identidade visual, paleta, tipografia, componentes
-2. `design/README.md` — índice e decisões fechadas
-3. `design/tokens/design-tokens.json` — fonte da verdade dos tokens
-4. `design/tokens/variables.css` — versão CSS pronta
+A **TMB** é uma fintech que presta serviços financeiros para infoprodutores
+(boleto e Pix parcelado em lançamentos). A operação comercial depende de
+duas frentes:
 
-**Regras invioláveis ao tocar em `ui/`:**
-- Não usar valores hex hardcoded — sempre `var(--token)` de `variables.css`
-- Não usar fontes fora de Inter (UI), Cinzel (só wordmark do logo), JetBrains Mono (código)
-- Não substituir o logo do header por texto plano "Alfred" — usar SVG do lockup
-- Toda nova feature/página deve respeitar a paleta e os componentes existentes
-- Light + dark theme devem funcionar para qualquer coisa nova
+- **Retenção** — manter a carteira ativa, evitar churn e maximizar LTV.
+- **Aquisição** — alimentar o funil com novos parceiros via times Closer e Growth.
 
-## Estrutura de dados
+A análise dessas frentes vivia em planilhas e dashboards (Metabase, HubSpot),
+exigindo SQL, conhecimento do schema e tempo. O **Alfred** resolve isso:
+é um agente conversacional que recebe perguntas em linguagem natural e
+devolve análises de churn, LTV, pipeline e funil — sem que o usuário precise
+abrir nenhuma ferramenta.
 
-### fVendas (tabela de vendas)
-| Coluna | Tipo | Descrição |
+---
+
+## 2. Arquitetura — fluxo real de uma pergunta
+
+```
+Usuário
+  │
+  ▼  POST /chats/{id}/messages          (ui/app.py · FastAPI)
+Orchestrator (agents/orchestrator.py)
+  │
+  ├─► ContextAgent (Haiku)               classifica intenção · período · identidade
+  │
+  ├─► [atalho] se is_reformat_request   → ReportAgent reutiliza cache
+  │
+  ├─► DataAgent                          carrega só o que a intenção exige:
+  │     ├── Metabase (fVendas, dProdutores)   se "retention" ∈ areas
+  │     └── HubSpot parquet                    se "acquisition" ∈ areas
+  │
+  ├─► Especialistas (Sonnet · ReAct, até 4 steps)
+  │     ├── RetentionAgent      tools de churn/LTV/cohort/transições
+  │     └── AcquisitionAgent    tools de Closer/Growth/jornada
+  │       (rodam em paralelo via ThreadPoolExecutor se a pergunta for mista)
+  │
+  ├─► tools.py · analytics_agent._dispatch   executa pandas (`_calc_*`)
+  │
+  └─► ReportAgent (Sonnet · Haiku p/ greetings)
+        formata markdown final em pt-BR
+```
+
+Os agentes não compartilham estado entre si — todo contexto trafega pelo
+`IntentContract` (saída do ContextAgent) e `AnalyticsContext` (saída do DataAgent).
+
+---
+
+## 3. Agentes — responsabilidades
+
+| Agente | Arquivo | Modelo | Responsabilidade |
+|---|---|---|---|
+| Orchestrator | `agents/orchestrator.py` | — | Coordena o pipeline; cuida do atalho de reformatação; paraleliza especialistas no caso misto |
+| ContextAgent | `agents/context_agent.py` | Haiku | Devolve `IntentContract`: áreas (retention/acquisition/[]), período resolvido, identidade, regras aplicáveis, ambiguidades, flag de reformat |
+| DataAgent | `agents/data_agent.py` | — | Carrega só o que a intenção pede. Metabase via `data_loader.load_data()`. HubSpot via parquet em `data/`. |
+| RetentionAgent | `agents/retention_agent.py` | Sonnet | ReAct loop com tools de churn/LTV/cohort. Injeta as `regras_aplicaveis` no system prompt. |
+| AcquisitionAgent | `agents/acquisition_agent.py` | Sonnet | ReAct loop com tools de Closer/Growth/jornada cross-data. |
+| Analytics Engine | `agents/analytics_agent.py` | — | Funções `_calc_*` em pandas. Recebe `QueryPlan` montado pelos wrappers em `tools.py`. |
+| HubSpot Analytics | `agents/hubspot_analytics.py` | — | Cálculos específicos do funil HubSpot, chamados por `_calc_*`. |
+| ReportAgent | `agents/report_agent.py` | Sonnet (Haiku p/ greeting) | Formata `AnalyticsResult` em markdown. Para perguntas mistas, combina os dois resultados narrativamente. |
+
+`tools.py` registra **17 tools** (`CLAUDE_TOOLS`), classificadas em áreas
+(`TOOL_AREAS`): churn, closer, growth, misto, greeting. `get_claude_tools(areas)`
+filtra o subconjunto exposto a cada especialista.
+
+---
+
+## 4. Estado de sessão (server-side)
+
+Mantido em `ui/app.py` (`_session_state`) e propagado a cada chamada do
+Orchestrator. Persistência de mensagens em SQLite (`data/chats.db` via
+`ui/storage.py`).
+
+| Campo | Para que serve |
+|---|---|
+| `current_user_gestor` | Resolve "minha carteira", "meu relatório" |
+| `awaiting_identity_for` | Alfred está esperando o usuário se identificar; o ContextAgent reexecuta a query pendente assim que o nome chega |
+| `last_discussed_gestor` | Resolve pronomes ("dela", "dele", "desse gestor") |
+| `analytics_results_cache` | Habilita o atalho de reformatação — pula DataAgent e especialistas |
+
+---
+
+## 5. Dados — schemas reais
+
+### fVendas — construída em `data_loader._build_fvendas()`
+
+Não é a tabela bruta do Metabase. É um **grid** gerado em memória:
+todos os produtores × todos os meses desde o primeiro registro até o
+mês corrente, com `Status` calculado por forward-fill da última venda.
+
+| Coluna | Tipo | Origem |
 |---|---|---|
-| Código | int | ID da venda |
-| Produtor | str | Nome completo |
-| Data | date | Granularidade mensal |
-| Status | str | Ativo / Pré-churn / Churn / Inativo |
-| Status_Anterior | str | Status do mês anterior |
-| Valor | float | Valor total vendido pelo produtor naquele mês |
+| `Código` | int64 | Card 189 + 194 |
+| `Produtor` | str | Card 189 + 194 |
+| `Data` | datetime | Início do mês — todos os meses do grid |
+| `Valor` | float64 | Card 189 (0 se sem venda no mês) |
+| `Status` | str | Calculado: `Ativo / Pré-churn / Churn / Inativo` |
+| `Status_Anterior` | str ou NaN | `Status.shift(1)` por produtor — NaN no primeiro registro |
 
-### dProdutores (tabela de produtores)
-| Coluna | Tipo | Descrição |
-|---|---|---|
-| Código | int | ID do produtor |
-| Produtor | str | Nome completo |
-| Cluster | str | Classificação por tamanho |
-| Gestor | str | Gestor de contas TMB |
-| Data Parceria | date | Entrada na TMB |
-| Data 1ª Venda | date | Primeira venda realizada |
+**Cálculo de Status** (no fim de cada mês do grid):
 
-## Regras de negócio críticas
-- Status é calculado com base na data de última venda da tabela diária
-- Um produtor pode mudar de Ativo para Pré-churn sem aparecer em fVendas naquele mês
-- Inativo ≠ Churn: Inativo nunca vendeu, Churn vendeu mas parou
-- Sempre filtrar pelo mês mais recente disponível como "estado atual"
+| Condição | Status |
+|---|---|
+| produtor nunca teve venda | Inativo |
+| dias desde última venda ≤ 61 | Ativo |
+| 61 < dias ≤ 121 | Pré-churn |
+| dias > 121 | Churn |
 
-## Padrões de código
-- Sempre usar pandas para manipulação de dados
-- Funções de leitura do Metabase isoladas em data_loader.py (fallback: parquet em cache/)
-- Agentes definidos em agents/ com um arquivo por agente
-- Logs de execução em cada chamada de agente
-- Entry point: ui/app.py (FastAPI, POST /chat)
-- Prompts de todos os agentes centralizados em prompts.py
+### dProdutores — construída em `data_loader._build_dprodutores()`
 
-## O que NÃO fazer
-- Não hardcodar caminhos de arquivo — usar variáveis de ambiente
-- Não retornar dados brutos ao usuário — sempre sumarizar
-- Não fazer suposições sobre status — sempre calcular a partir dos dados
-
-## Regras críticas de consulta temporal
-
-- A tabela fVendas tem uma linha por produtor por mês. Isso significa que
-  o histórico completo já está na tabela — não existe necessidade de dados externos
-  para consultas de períodos passados.
-- Quando o usuário perguntar sobre um mês específico, SEMPRE filtrar
-  vendas["Data"] pelo mês e ano exatos antes de qualquer cálculo.
-- NUNCA responder com o mês mais recente quando o usuário especificou outro período.
-- A coluna Status do Excel é apenas referência — o status real de um produtor
-  em um dado mês é o valor da coluna Status na linha correspondente àquele mês.
-- Para cruzar com dProdutores, sempre fazer merge em Produtor ou Código
-  antes de calcular métricas. Cluster e Gestor vêm sempre de dProdutores.
-
-## Arquitetura de agentes
-
-Fluxo de uma pergunta: Orchestrator → Context Agent → Data Agent → Retention ou Acquisition Agent → Analytics Engine → Report Agent → usuário.
-
-| Agente | Arquivo | Responsabilidade |
-|---|---|---|
-| Orchestrator | agents/orchestrator.py | Coordena o pipeline completo |
-| Context Agent | agents/context_agent.py | Classifica intenção (churn/closer/growth/saudação), extrai período, resolve usuário |
-| Data Agent | agents/data_agent.py | Carrega fVendas e dProdutores do Metabase (ou cache parquet) |
-| Retention Agent | agents/retention_agent.py | ReAct loop — análise de churn, LTV, cohort |
-| Acquisition Agent | agents/acquisition_agent.py | ReAct loop — Closer pipeline e Growth funil |
-| Analytics Engine | agents/analytics_agent.py | Funções `_calc_*` em pandas; despacha para tools.py |
-| HubSpot Analytics | agents/hubspot_analytics.py | Cálculos específicos dos dados HubSpot |
-| Report Agent | agents/report_agent.py | Formata resposta final em markdown via Claude |
-
-Tools disponíveis para os agentes ReAct ficam em agents/tools.py (registradas em `CLAUDE_TOOLS` e `TOOL_AREAS`).
-
-## Modelos
-
-- **Sonnet** (`CLAUDE_MODEL`, padrão `claude-sonnet-4-6`): análise principal — Retention, Acquisition, Report Agent
-- **Haiku** (`CLAUDE_HAIKU_MODEL`, padrão `claude-haiku-4-5-20251001`): classificação de intenção no Context Agent (mais rápido e barato)
-
-## Dados HubSpot
-
-Fonte secundária de dados, usada pelo Acquisition Agent para análise de funil.
-
-| Arquivo | Gerado por | Conteúdo |
-|---|---|---|
-| data/hs_closer_pipeline.parquet | hubspot_importer.py | Pipeline do time Closer |
-| data/hs_growth_leads.parquet | hubspot_growth_importer.py | Leads do time Growth |
-
-Refresh manual: `python refresh_hubspot.py`. Recomendado semanalmente ou antes de análises de funil.
+| Co
