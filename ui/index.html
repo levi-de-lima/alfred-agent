@@ -314,6 +314,7 @@
       flex-direction: column;
       gap: var(--space-3);
       scroll-behavior: smooth;
+      scrollbar-gutter: stable;
     }
 
     /* ── 6 & 7. Bubbles ─────────────────────────────────────────── */
@@ -578,7 +579,7 @@
     /* ── Fade overlay (sobre as mensagens, abaixo do input) ─────── */
     .fade-overlay {
       position: absolute;
-      bottom: 0; left: 0; right: 0;
+      bottom: 0; left: 0; right: 14px;
       height: 120px;
       pointer-events: none;
       background: linear-gradient(to bottom,
