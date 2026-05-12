@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Alfred — Logo final (Cinzel)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F7F5; --surface: #FFFFFF; --border: #E5E5E3;
+    --text: #1A1A1A; --text-sec: #6B6B6B; --blue: #0066FF;
+    --blue-dark: #4D8FFF;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 40px 24px 80px; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 700; margin: 0 0 6px; }
+  .sub { color: var(--text-sec); margin: 0 0 32px; font-size: 15px; }
+  .card { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); margin-bottom: 24px; overflow: hidden; }
+  .card h3 { font-size: 14px; font-weight: 600; margin: 0; padding: 14px 20px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-sec); }
+  .row { display: flex; align-items: center; gap: 32px; padding: 32px 24px; }
+  .row + .row { border-top: 1px solid var(--border); }
+  .row.dark { background: #1A1A1A; }
+  .row.dark .label { color: #A0A0A0; }
+  .row.tmbblue { background: #0066FF; }
+  .row.tmbblue .label { color: rgba(255,255,255,0.7); }
+  .label { font-size: 11px; color: var(--text-sec); text-transform: uppercase; letter-spacing: 0.5px; width: 110px; flex-shrink: 0; }
+  .sizes { display: flex; align-items: center; gap: 32px; flex: 1; flex-wrap: wrap; }
+  .size-block { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .size-block span { font-size: 11px; color: var(--text-sec); }
+  .row.dark .size-block span, .row.tmbblue .size-block span { color: #A0A0A0; }
+  img { display: block; }
+  .desc { padding: 14px 20px; font-size: 13px; color: var(--text-sec); background: #FAFAFA; border-top: 1px solid var(--border); line-height: 1.6; }
+  .desc strong { color: var(--text); }
+  .legend { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 24px; font-size: 14px; line-height: 1.7; margin-bottom: 28px; }
+  .header-sim { display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 24px; }
+  .header-sim.light { background: #FFFFFF; border-bottom: 1px solid #E5E5E3; }
+  .header-sim.dark { background: #242424; border-bottom: 1px solid #3A3A3A; }
+  .header-sim .tmb-light { font-size: 13px; color: var(--text-sec); }
+  .header-sim .tmb-dark { font-size: 13px; color: #A0A0A0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Alfred — logo final</h1>
+  <p class="sub">Wyvern de Wessex + wordmark "ALFRED" em Cinzel Bold (caixa alta romana). Cor primária <code>#0066FF</code>. Três variantes de cor para cobrir todos os contextos de uso.</p>
+
+  <div class="legend">
+    <strong>Como o sistema funciona:</strong> a variante <em>blue</em> é o asset oficial (default). As variantes <em>white</em> e <em>black</em> existem como exports estáticos para contextos onde CSS não pode trocar a cor (impressão, e-mail HTML, PDF embutido, fundo TMB Blue). Para o app em si, o ideal é importar o SVG e trocar <code>fill</code> via <code>currentColor</code> + <code>var(--brand-accent)</code> dos tokens — assim o mesmo arquivo se adapta automaticamente ao tema.
+  </div>
+
+  <!-- 01 Variante azul -->
+  <div class="card">
+    <h3>Variante azul — uso default</h3>
+    <div class="row"><span class="label">Fundo claro</span><div class="sizes">
+      <div class="size-block"><img src="alfred-lockup-blue.svg" height="32"><span>32px (header)</span></div>
+      <div class="size-block"><img src="alfred-lockup-blue.svg" height="48"><span>48px</span></div>
+      <div class="size-block"><img src="alfred-lockup-blue.svg" height="80"><span>80px</span></div>
+    </div></div>
+    <div class="row dark"><span class="label">Fundo escuro</span><div class="sizes">
+      <div class="size-block"><img src="alfred-lockup-blue.svg" height="32"><span>32px</span></div>
+      <div class="size-block"><img src="alfred-lockup-blue.svg" height="48"><span>48px</span></div>
+      <div class="size-block"><img src="alfred-lockup-blue.svg" height="80"><span>80px</span></div>
+    </div></div>
+    <div class="desc"><strong>Observação:</strong> em fundo escuro, o azul <code>#0066FF</code> tem contraste apertado (~5.3:1) e pode "vibrar" para alguns olhos. Por isso a recomendação dos tokens é usar <code>#4D8FFF</code> no tema dark — mas isso só funciona via CSS. Se você precisar do SVG estático em fundo escuro (e-mail, PDF), use a variante <em>white</em>.</div>
+  </div>
+
+  <!-- 02 Variante branca -->
+  <div class="card">
+    <h3>Variante branca — fundo escuro ou TMB Blue</h3>
+    <div class="row dark"><span class="label">Fundo escuro</span><div class="sizes">
+      <div class="size-block"><img src="alfred-lockup-white.svg" height="32"><span>32px (header)</span></div>
+      <div class="size-block"><img src="alfred-lockup-white.svg" height="48"><span>48px</span></div>
+      <div class="size-block"><img src="alfred-lockup-white.svg" height="80"><span>80px</span></div>
+    </div></div>
+    <div class="row tmbblue"><span class="label">Fundo TMB Blue</span><div class="sizes">
+      <div class="size-block"><img src="alfred-lockup-white.svg" height="32"><span>32px</span></div>
+      <div class="size-block"><img src="alfred-lockup-white.svg" height="48"><span>48px</span></div>
+      <div class="size-block"><img src="alfred-lockup-white.svg" height="80"><span>80px</span></div>
+    </div></div>
+    <div class="desc"><strong>Quando usar:</strong> botões/banners em fundo TMB Blue (contraste 21:1, máximo possível), e-mail HTML sem suporte a CSS variables, splash screen escuro, exportações para apresentações com slide de fundo escuro.</div>
+  </div>
+
+  <!-- 03 Variante preta -->
+  <div class="card">
+    <h3>Variante preta — impressão monocromática / alto contraste</h3>
+    <div class="row"><span class="label">Fundo claro</span><div class="sizes">
+      <div class="size-block"><img src="alfred-lockup-black.svg" height="32"><span>32px</span></div>
+      <div class="size-block"><img src="alfred-lockup-black.svg" height="48"><span>48px</span></div>
+      <div class="size-block"><img src="alfred-lockup-black.svg" height="80"><span>80px</span></div>
+    </div></div>
+    <div class="desc"><strong>Quando usar:</strong> PDFs preto-e-branco, faxes, contratos impressos, documentos legais. Não substitui a versão azul em contextos digitais — é só para quando a cor é fisicamente impossível.</div>
+  </div>
+
+  <!-- Simulação de header do app -->
+  <div class="card">
+    <h3>Simulação do header do app — light vs dark</h3>
+    <div class="row" style="background:#F7F7F5; padding: 24px;">
+      <div style="flex:1; background: white; border-radius: 8px; border: 1px solid #E5E5E3; overflow: hidden;">
+        <div class="header-sim light">
+          <img src="alfred-lockup-blue.svg" style="height: 32px;">
+          <span class="tmb-light">TMB</span>
+        </div>
+        <div style="padding: 24px; color: #6B6B6B; font-size: 13px;">…área do chat (tema claro)…</div>
+      </div>
+    </div>
+    <div class="row" style="background:#1A1A1A; padding: 24px;">
+      <div style="flex:1; background: #242424; border-radius: 8px; border: 1px solid #3A3A3A; overflow: hidden;">
+        <div class="header-sim dark">
+          <img src="alfred-lockup-white.svg" style="height: 32px;">
+          <span class="tmb-dark">TMB</span>
+        </div>
+        <div style="padding: 24px; color: #A0A0A0; font-size: 13px;">…área do chat (tema escuro)…</div>
+      </div>
+    </div>
+    <div class="desc"><strong>Estratégia recomendada:</strong> no app, o ideal é o SVG inline com <code>fill="currentColor"</code> e <code>color: var(--brand-accent)</code> no CSS — assim só um arquivo cobre os dois temas via tokens. Veja a seção abaixo.</div>
+  </div>
+
+  <!-- Símbolos isolados -->
+  <div class="card">
+    <h3>Símbolo isolado — tamanhos e tonalidades</h3>
+    <div class="row"><span class="label">Azul / claro</span><div class="sizes">
+      <div class="size-block"><img src="alfred-symbol-blue.svg" width="24" height="20"><span>24px</span></div>
+      <div class="size-block"><img src="alfred-symbol-blue.svg" width="48" height="40"><span>48px</span></div>
+      <div class="size-block"><img src="alfred-symbol-blue.svg" width="96" height="80"><span>96px</span></div>
+      <div class="size-block"><img src="alfred-symbol-blue.svg" width="160" height="128"><span>160px</span></div>
+    </div></div>
+    <div class="row dark"><span class="label">Branco / escuro</span><div class="sizes">
+      <div class="size-block"><img src="alfred-symbol-white.svg" width="24" height="20"><span>24px</span></div>
+      <div class="size-block"><img src="alfred-symbol-white.svg" width="48" height="40"><span>48px</span></div>
+      <div class="size-block"><img src="alfred-symbol-white.svg" width="96" height="80"><span>96px</span></div>
+      <div class="size-block"><img src="alfred-symbol-white.svg" width="160" height="128"><span>160px</span></div>
+    </div></div>
+  </div>
+
+  <!-- Favicons -->
+  <div class="card">
+    <h3>Favicon (cabeça) — tamanhos reais</h3>
+    <div class="row"><span class="label">Azul / claro</span><div class="sizes">
+      <div class="size-block"><img src="alfred-favicon-blue.svg" width="16" height="16"><span>16px (tab)</span></div>
+      <div class="size-block"><img src="alfred-favicon-blue.svg" width="24" height="24"><span>24px</span></div>
+      <div class="size-block"><img src="alfred-favicon-blue.svg" width="32" height="32"><span>32px (bookmark)</span></div>
+      <div class="size-block"><img src="alfred-favicon-blue.svg" width="64" height="64"><span>64px</span></div>
+    </div></div>
+    <div class="row dark"><span class="label">Branco / escuro</span><div class="sizes">
+      <div class="size-block"><img src="alfred-favicon-white.svg" width="16" height="16"><span>16px</span></div>
+      <div class="size-block"><img src="alfred-favicon-white.svg" width="24" height="24"><span>24px</span></div>
+      <div class="size-block"><img src="alfred-favicon-white.svg" width="32" height="32"><span>32px</span></div>
+      <div class="size-block"><img src="alfred-favicon-white.svg" width="64" height="64"><span>64px</span></div>
+    </div></div>
+  </div>
+</div>
+</body>
+</html>

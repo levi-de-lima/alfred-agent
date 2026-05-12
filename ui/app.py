@@ -1,12 +1,21 @@
 """
 app.py — FastAPI backend para o Alfred (TMB Churn Analyzer).
 
-Rotas:
+Rotas legadas:
   GET  /          → serve ui/index.html
   POST /chat      → recebe {message, session_id} e chama orchestrator.run()
   GET  /health    → retorna status dos dados
+
+Rotas de histórico de chats:
+  GET    /chats               → lista chats (sem messages)
+  GET    /chats/{id}          → chat completo
+  POST   /chats               → cria chat vazio
+  PATCH  /chats/{id}          → renomeia chat
+  DELETE /chats/{id}          → apaga chat
+  POST   /chats/{id}/messages → envia mensagem, chama orchestrator, salva troca
 """
 
+import asyncio
 import sys
 import os
 from pathlib import Path
@@ -14,6 +23,8 @@ from pathlib import Path
 # Garante que o root do projeto está no path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+
+import anthropic as _anthropic
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -23,6 +34,7 @@ from pydantic import BaseModel
 from agents import orchestrator
 from data_loader import load_data
 from config import settings
+import ui.storage as storage
 
 logger = settings.logger
 
@@ -87,6 +99,11 @@ app = FastAPI(title="Alfred — TMB Churn Analyzer", docs_url=None, redoc_url=No
 app.mount("/static", StaticFiles(directory=str(UI_DIR / "static")), name="static")
 
 
+@app.on_event("startup")
+async def startup():
+    storage.init_db()
+
+
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
@@ -103,6 +120,38 @@ class ChatResponse(BaseModel):
     session_id: str
     pipeline_duration_ms: int
     error: str | None = None
+
+
+# Chats persistence schemas
+class ChatSummary(BaseModel):
+    id: str
+    title: str
+    updated_at: str
+    message_count: int
+
+
+class ChatDetail(BaseModel):
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+    messages: list[dict]
+
+
+class ChatCreateResponse(BaseModel):
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+
+
+class ChatRenameRequest(BaseModel):
+    title: str
+
+
+class MessageRequest(BaseModel):
+    message: str
+    force_refresh: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +208,127 @@ async def chat(req: ChatRequest):
         pipeline_duration_ms=result.pipeline_duration_ms,
         error=result.error,
     )
+
+
+# ---------------------------------------------------------------------------
+# Chat history — CRUD
+# ---------------------------------------------------------------------------
+
+@app.get("/chats", response_model=list[ChatSummary])
+async def list_chats():
+    return storage.list_chats()
+
+
+@app.get("/chats/{chat_id}", response_model=ChatDetail)
+async def get_chat(chat_id: str):
+    chat = storage.get_chat(chat_id)
+    if chat is None:
+        raise HTTPException(status_code=404, detail="Chat não encontrado")
+    return chat
+
+
+@app.post("/chats", response_model=ChatCreateResponse, status_code=201)
+async def create_chat():
+    return storage.create_chat()
+
+
+@app.patch("/chats/{chat_id}")
+async def rename_chat(chat_id: str, req: ChatRenameRequest):
+    if not req.title.strip():
+        raise HTTPException(status_code=400, detail="Título não pode ser vazio")
+    if not storage.update_title(chat_id, req.title.strip()):
+        raise HTTPException(status_code=404, detail="Chat não encontrado")
+    return {"ok": True}
+
+
+@app.delete("/chats/{chat_id}", status_code=204)
+async def delete_chat(chat_id: str):
+    if not storage.delete_chat(chat_id):
+        raise HTTPException(status_code=404, detail="Chat não encontrado")
+
+
+# ---------------------------------------------------------------------------
+# Chat history — send message (substitui /chat para chats persistidos)
+# ---------------------------------------------------------------------------
+
+def _generate_title(first_message: str) -> str:
+    """Gera título curto com Haiku. Chamado em background thread."""
+    try:
+        client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        resp = client.messages.create(
+            model=settings.claude_haiku_model,
+            max_tokens=32,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"Resuma esta pergunta em no máximo 6 palavras para ser título de uma conversa. "
+                    f"Responda APENAS com o título, sem pontuação final:\n\n{first_message}"
+                ),
+            }],
+        )
+        title = resp.content[0].text.strip().rstrip(".").strip()
+        return title if title else "Nova conversa"
+    except Exception:
+        return "Nova conversa"
+
+
+@app.post("/chats/{chat_id}/messages", response_model=ChatResponse)
+async def chat_message(chat_id: str, req: MessageRequest):
+    chat = storage.get_chat(chat_id)
+    if chat is None:
+        raise HTTPException(status_code=404, detail="Chat não encontrado")
+
+    if not req.message.strip():
+        raise HTTPException(status_code=400, detail="Mensagem vazia")
+
+    logger.info(
+        f"POST /chats/{chat_id}/messages | "
+        f"force_refresh={req.force_refresh} | query_len={len(req.message)}"
+    )
+
+    is_first_message = storage.message_count(chat_id) == 0
+
+    history = storage.get_last_n_turns(chat_id)
+    state = _get_session_state(chat_id)
+
+    result = orchestrator.run(
+        user_query=req.message,
+        session_id=chat_id,
+        force_refresh=req.force_refresh,
+        conversation_history=history,
+        current_user_gestor=state.get("current_user_gestor"),
+        awaiting_identity_for=state.get("awaiting_identity_for"),
+        last_discussed_gestor=state.get("last_discussed_gestor"),
+        analytics_results_cache=state.get("analytics_results_cache"),
+    )
+
+    if not result.error:
+        storage.append_message(chat_id, "user", req.message)
+        storage.append_message(chat_id, "assistant", result.markdown_response)
+        _update_session_state(
+            chat_id,
+            identified_user=result.identified_user,
+            ask_identity_for=result.ask_identity_for,
+            last_discussed_gestor=result.last_discussed_gestor,
+            analytics_results_cache=result.analytics_results_cache,
+        )
+        if is_first_message:
+            # Gera título em background sem bloquear a resposta
+            loop = asyncio.get_running_loop()
+            loop.run_in_executor(None, _set_title_async, chat_id, req.message)
+
+    return ChatResponse(
+        markdown_response=result.markdown_response,
+        data_citation=result.data_citation,
+        session_id=result.session_id,
+        pipeline_duration_ms=result.pipeline_duration_ms,
+        error=result.error,
+    )
+
+
+def _set_title_async(chat_id: str, first_message: str) -> None:
+    title = _generate_title(first_message)
+    storage.update_title(chat_id, title)
 
 
 @app.get("/health")

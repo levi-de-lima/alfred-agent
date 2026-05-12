@@ -1,17 +1,19 @@
-.env
+# Python
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
+.env
 *.egg-info/
-.venv/
-venv/
-cache/*.xlsx
-cache/*.parquet
-logs/*.log
-data/*.parquet
-data/*.json
-streamlit.log
-streamlit_new.log
-.claude/
-tests/fixtures/
-*.xlsx
-_diag_*.py
+
+# Dados em cache e DB de chats (gerados em runtime)
+cache/
+data/
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

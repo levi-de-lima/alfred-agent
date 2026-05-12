@@ -1,0 +1,184 @@
+/* =============================================================
+   Alfred — CSS Variables
+   Gerado a partir de design-tokens.json. Esta é a saída pronta
+   para ser importada no <head> do app (ou inline em index.html).
+
+   Uso:
+     html[data-theme="light"]  → tema claro (default)
+     html[data-theme="dark"]   → tema escuro
+
+   Toggle via JS:
+     document.documentElement.setAttribute('data-theme',
+       prefersDark ? 'dark' : 'light');
+   ============================================================= */
+
+:root {
+  /* Marca — invariantes (não mudam entre temas) */
+  --tmb-blue:          #0066FF;
+  --tmb-blue-hover:    #0052CC;
+  --tmb-blue-pressed:  #0041A3;
+  --tmb-blue-light:    #E8F0FF;
+  --tmb-black:         #0A0A0A;
+
+  /* Semânticas — também invariantes */
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger:  #EF4444;
+  --info:    var(--tmb-blue);
+
+  /* Tipografia */
+  --font-sans:     'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-wordmark: 'Cinzel', serif;     /* Apenas para o wordmark "ALFRED" no logo */
+  --font-mono:     'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 15px;
+  --fs-md: 16px;
+  --fs-lg: 18px;
+  --fs-xl: 20px;
+  --fs-2xl: 24px;
+  --fs-3xl: 32px;
+  --lh-tight: 1.2;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.6;
+  --ls-tight: -0.02em;
+  --ls-wide:  0.05em;
+
+  /* Espaçamento (escala de 4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
+  --radius-xl-tight: 4px;
+  --radius-full: 9999px;
+
+  /* Sombras */
+  --shadow-none:   none;
+  --shadow-subtle: 0 1px 2px rgba(10, 10, 10, 0.04);
+  --shadow-card:   0 1px 3px rgba(10, 10, 10, 0.06), 0 1px 2px rgba(10, 10, 10, 0.04);
+
+  /* Layout */
+  --chat-max-width:           780px;
+  --header-height:            56px;
+  --input-bar-height:         72px;
+  --message-gap:              16px;
+  --user-bubble-max-width:    75%;
+  --assistant-bubble-max-width: 85%;
+  --bp-mobile:                600px;
+
+  /* Motion */
+  --duration-fast:   120ms;
+  --duration-normal: 200ms;
+  --duration-slow:   400ms;
+  --easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* z-index */
+  --z-base:     0;
+  --z-header:   10;
+  --z-input:    10;
+  --z-toast:    50;
+  --z-modal:    100;
+}
+
+/* -------------------------------------------------------------
+   Tema claro (default)
+   ------------------------------------------------------------- */
+:root,
+[data-theme="light"] {
+  --bg:           #F7F7F5;
+  --surface:      #FFFFFF;
+  --surface-alt:  #FAFAFA;
+  --border:       #E5E5E3;
+  --border-strong:#D4D4D2;
+
+  --text-primary:   #1A1A1A;
+  --text-secondary: #6B6B6B;
+  --text-muted:     #A0A0A0;
+
+  --brand-accent:       var(--tmb-blue);
+  --brand-accent-hover: var(--tmb-blue-hover);
+  --brand-accent-light: var(--tmb-blue-light);
+
+  --user-bubble:           var(--tmb-blue);
+  --user-bubble-text:      #FFFFFF;
+  --assistant-bubble:      #FFFFFF;
+  --assistant-bubble-text: #1A1A1A;
+
+  --code-bg: #F4F4F2;
+
+  color-scheme: light;
+}
+
+/* -------------------------------------------------------------
+   Tema escuro — Charcoal Notion-style
+   ------------------------------------------------------------- */
+[data-theme="dark"] {
+  --bg:           #1A1A1A;
+  --surface:      #242424;
+  --surface-alt:  #2E2E2E;
+  --border:       #3A3A3A;
+  --border-strong:#4A4A4A;
+
+  --text-primary:   #ECECEC;
+  --text-secondary: #A0A0A0;
+  --text-muted:     #6B6B6B;
+
+  --brand-accent:       #4D8FFF;        /* TMB Blue ajustado p/ contraste AA em dark */
+  --brand-accent-hover: #6BA3FF;
+  --brand-accent-light: #1A2E5C;
+
+  --user-bubble:           #4D8FFF;
+  --user-bubble-text:      #0A0F1F;
+  --assistant-bubble:      #242424;
+  --assistant-bubble-text: #ECECEC;
+
+  --code-bg: #0F0F0F;
+
+  /* Sombras quase invisíveis em dark — usar borda como separação */
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-card:   0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2);
+
+  color-scheme: dark;
+}
+
+/* -------------------------------------------------------------
+   Auto-switch via prefers-color-scheme (opcional, ative se
+   quiser respeitar a preferência do SO automaticamente)
+   ------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:           #1A1A1A;
+    --surface:      #242424;
+    --surface-alt:  #2E2E2E;
+    --border:       #3A3A3A;
+    --border-strong:#4A4A4A;
+    --text-primary:   #ECECEC;
+    --text-secondary: #A0A0A0;
+    --text-muted:     #6B6B6B;
+    --brand-accent:       #4D8FFF;
+    --brand-accent-hover: #6BA3FF;
+    --brand-accent-light: #1A2E5C;
+    --user-bubble:           #4D8FFF;
+    --user-bubble-text:      #0A0F1F;
+    --assistant-bubble:      #242424;
+    --assistant-bubble-text: #ECECEC;
+    --code-bg: #0F0F0F;
+    color-scheme: dark;
+  }
+}
