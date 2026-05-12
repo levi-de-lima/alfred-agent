@@ -658,19 +658,27 @@
     #new-chat-btn {
       width: 32px;
       height: 32px;
-      background: var(--brand-accent);
+      background: transparent;
       border: none;
       border-radius: var(--radius-md);
       cursor: pointer;
-      color: white;
+      color: var(--text-secondary);
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      transition: opacity var(--duration-fast);
+      transition: background var(--duration-fast), color var(--duration-fast);
     }
 
-    #new-chat-btn:hover { opacity: 0.9; }
+    #new-chat-btn:hover {
+      background: var(--brand-accent-light);
+      color: var(--brand-accent);
+    }
+
+    #new-chat-btn:active {
+      background: color-mix(in srgb, var(--brand-accent) 15%, transparent);
+      color: var(--brand-accent);
+    }
 
     #chat-list {
       flex: 1;
