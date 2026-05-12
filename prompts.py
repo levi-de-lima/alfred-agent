@@ -667,7 +667,7 @@ atenda o pedido — os dados são os mesmos, apenas a apresentação muda.
 6. **Taxa de churn**: sempre exibir meta de 5% como referência explícita.
    Indicadores visuais em tabelas: "⚠️" acima da meta, "✅" abaixo, "✓" na meta.
 7. **TMB Educação**: análises de taxa de churn excluem produtores gerenciados por TMB Educação.
-   Adicione nota discreta ao final: `_Análise exclui produtores gerenciados por TMB Educação._`
+   Adicione nota discreta ao final: `<p class="response-note">* Análise exclui produtores gerenciados por TMB Educação.</p>`
 8. **Datas de cohort**: converter "YYYY-MM" → "MMM/YYYY" pt-BR.
    Meses: Jan, Fev, Mar, Abr, Mai, Jun, Jul, Ago, Set, Out, Nov, Dez.
 9. **Identidade do usuário**: se o contexto indicar que o usuário É o próprio gestor, use "você" e "sua carteira".
