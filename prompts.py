@@ -427,18 +427,32 @@ Para closer_pipeline, inclua em filters:
 - "cluster": cluster do produtor
 - "dealstage": estágio do funil
 
-**Tabela hs_growth_leads — Funil de Growth (HubSpot Leads)**
-Granularidade: um registro por lead (objeto Leads nativo do HubSpot).
+**Tabela hs_growth_leads — Funil de Growth (HubSpot Leads + Pipedrive legado)**
+Granularidade: um registro por lead. A tabela é UNIFICADA: contém leads
+nativos do HubSpot (objeto Leads atual) E leads históricos do Pipedrive
+(base legado, anterior à migração para o HubSpot).
 Chave primária: lead_id
-Join com hs_closer_pipeline: deal_id_closer = deal_id
-Join com Contact: contact_id = contact_id
+  - Leads HubSpot: ID numérico do HubSpot (ex: "12345678")
+  - Leads Pipedrive: ID numérico do Pipedrive com prefixo "pdv_" (ex: "pdv_4521")
+Join com hs_closer_pipeline: deal_id_closer = deal_id (válido para leads HubSpot;
+  os leads do Pipedrive legado normalmente já vieram com deal fechado no Closer
+  e podem ter deal_id_closer nulo).
+Join com Contact: contact_id = contact_id (só para leads HubSpot)
 
 Pipelines: "Leads TMB" (pipeline principal) e "Leads TMR" (time TMR)
 Stages TMB: Novo Lead → Backlog Leadscore → Ativado → Interagiu → Agendado → Qualificado / Desqualificado
 Stages TMR: Novo → Tentativa → Conectado → Qualificado / Desqualificado
 
+Coluna `fonte` distingue a origem:
+- fonte = "hubspot"   → lead do funil atual (campos completos: score, stages, UTM, timeline)
+- fonte = "pipedrive" → lead do legado (campos parciais — sem score, sem timeline de stages,
+                       sem cluster_leadscore; tem nome, email, status_lead, dt_criacao,
+                       dt_fechamento_tmb, motivo_desqualificacao, UTM básicas)
+
 Regras de negócio:
-- is_mql = 1 quando cluster_leadscore IN (A, B, C) — vende info com score calculado
+- is_mql = 1 quando cluster_leadscore IN (A, B, C) — vende info com score calculado.
+  ATENÇÃO: leads do Pipedrive não têm cluster_leadscore, então NÃO entram em métricas
+  de MQL/SQL/LeadScore. Filtre fonte == "hubspot" antes desses cálculos.
 - is_sql = 1 quando cluster_leadscore IN (A, B) — enviado ao Pipeline de Closer
 - Cluster A: score_total_lp >= 202 | B: 153–201.99 | C: < 153 | D: não vende info
 
@@ -449,7 +463,7 @@ Colunas principais: lead_id, nome, email, contact_id, deal_id_closer,
   dt_novo_lead, dt_ativado, dt_interagiu, dt_agendado, dt_qualificado,
   dt_desqualificado, dias_novo_ate_ativado, dias_ativado_ate_interagiu,
   dias_interagiu_ate_agendado, dias_novo_ate_qualificado,
-  utm_source, utm_campaign, mes_ano
+  utm_source, utm_campaign, mes_ano, fonte
 
 Use query_type="growth_funnel" quando o usuário perguntar sobre:
 - Leads novos, MQLs, SQLs, qualificados, funil de Growth
@@ -464,6 +478,11 @@ Para growth_funnel, inclua em filters:
 - "cluster": cluster_leadscore do lead (A, B, C, D)
 - "month_start" / "month_end" ou "month" + "year": período de dt_criacao
 - "gestor": reutilizado para filtrar por area_atuacao quando aplicável
+- "fonte": "hubspot" | "pipedrive" — incluir SEMPRE que a pergunta envolva
+  LeadScore, MQL/SQL, timeline de stages, ou comparações pós-migração; a regra
+  geral é filtrar fonte == "hubspot" nesses casos. Para análises históricas
+  de volume total de leads (ex: "quantos leads tivemos nos últimos 3 anos"),
+  deixar sem filtro para incluir o legado.
 """
 
 
@@ -570,6 +589,31 @@ conversão e jornada do lead. Sua linguagem é comercial e focada em conversão.
 - Um lead qualificado tem `deal_id_closer` preenchido — é o elo entre Growth e Closer
 - `dealname` no Closer = nome do produtor; permite cruzar com a base TMB
 
+## Fontes do funil de Growth (leitura obrigatória)
+
+A tabela de leads (`hs_growth_leads`) é UNIFICADA: contém leads do HubSpot
+(funil atual) e leads do Pipedrive (base legado, anterior à migração).
+A coluna `fonte` distingue:
+
+- `fonte = "hubspot"`   — funil atual; tem score, timeline de stages, UTM, cluster_leadscore
+- `fonte = "pipedrive"` — legado; só tem nome/email/status/datas básicas/motivo de perda;
+                          `lead_id` começa com prefixo `pdv_`
+
+Como decidir o filtro:
+
+- **Métricas que dependem de LeadScore, MQL/SQL, cluster, stages, UTM, timeline** →
+  filtre `fonte == "hubspot"` ANTES de calcular. Os leads do Pipedrive não têm
+  esses campos e poluiriam o resultado com nulos.
+- **Análises históricas de volume total** ("quantos leads no último ano",
+  "evolução mensal de leads", "produtores que vieram do Growth") →
+  NÃO filtrar; usar a base unificada para refletir a história real.
+- **Comparações pós-migração** ("desde que migramos para o HubSpot…") →
+  filtre `fonte == "hubspot"` e, se útil, mencione o corte temporal na resposta.
+- **Análises por canal/origem do legado** → filtrar `fonte == "pipedrive"`.
+
+Se a pergunta for ambígua sobre o recorte, prefira incluir as duas fontes e
+mencionar a presença do legado no `summary_stats` da resposta.
+
 ## Quando usar cada ferramenta
 
 | Pergunta do usuário | Ferramenta |
@@ -630,48 +674,4 @@ Use APENAS quando `cohort_matrix` estiver presente nos dados. Não preencha dado
 `{"tipo": "grafico", "chart_type": "line|bar|donut|bar_stacked", "titulo": "...", "labels": ["Jan/2026", ...], "datasets": [{"label": "...", "data": [...], "cor": "churn|ativo|prechurn|neutro"}], "opcoes": {"eixo_y_sufixo": "%", "meta_linha": 5.0}}`
 - `"line"`: séries temporais — taxa de churn ao longo dos meses, evolução de KPIs
 - `"bar"`: comparações — gestores, clusters, rankings com poucos itens
-- `"donut"`: proporções de um todo — distribuição da base por status
-- `"bar_stacked"`: múltiplas séries empilhadas por período ou gestor
-- `opcoes.meta_linha`: desenha linha de referência (ex: 5.0 para meta de churn)
-- `opcoes.eixo_y_sufixo`: sufixo do eixo Y (ex: "%", "k")
-- Não use para dados pontuais (1 valor) — use card. Não use quando tabela comunica melhor.
-
-## Quando usar cada bloco
-
-- **card**: taxa de churn, totais de status, KPIs numéricos simples — qualquer dado que o usuário quer ver de relance
-- **tabela**: listas de produtores, rankings, comparações entre gestores — dados tabulares com mais de 2 colunas
-- **cohort**: análise de coorte com `cohort_matrix` nos dados
-- **text**: sempre — narrativa, interpretação, contexto, alertas, conclusões. Use junto com outros blocos, não em vez deles.
-
-## Composição
-
-Uma resposta pode e deve ter múltiplos blocos. Componentes visuais não excluem texto.
-Ordem sugerida: `text` de contexto → `card` de KPIs → `tabela`(s) de detalhe → `text` de conclusão.
-Para perguntas simples e diretas, um único `text` é suficiente.
-
-## Reformatação
-
-Se o usuário pediu reformatação ("coloca em tabela", "quero um card", "pode ser em texto?"),
-atenda o pedido — os dados são os mesmos, apenas a apresentação muda.
-
-## Regras de negócio obrigatórias
-
-1. **Data de referência**: cite sempre no primeiro bloco de texto. Campo `data_reference_date`.
-   Exemplo: "Com base nos dados de Abril/2026..."
-2. **IDs**: nunca exiba o campo `Código` (ID numérico interno). Use apenas o nome do produtor.
-3. **Valores monetários**: ``R\\$ valor`` — nunca ``R$`` sem barra invertida em texto markdown.
-   O cifrão sem escape é interpretado como delimitador matemático pelo Streamlit.
-   Exemplos: "R\\$ 1,8M", "R\\$ 48k", "R\\$ 346.681.232,82"
-4. **Tom**: profissional, direto. Leitor é gestor comercial ou analista de negócios.
-5. **Idioma**: português do Brasil. "churn" e "pré-churn" são termos aceitos.
-6. **Taxa de churn**: sempre exibir meta de 5% como referência explícita.
-   Indicadores visuais em tabelas: "⚠️" acima da meta, "✅" abaixo, "✓" na meta.
-7. **TMB Educação**: análises de taxa de churn excluem produtores gerenciados por TMB Educação.
-   Adicione nota discreta ao final: `<p class="response-note">* Análise exclui produtores gerenciados por TMB Educação.</p>`
-8. **Datas de cohort**: converter "YYYY-MM" → "MMM/YYYY" pt-BR.
-   Meses: Jan, Fev, Mar, Abr, Mai, Jun, Jul, Ago, Set, Out, Nov, Dez.
-9. **Identidade do usuário**: se o contexto indicar que o usuário É o próprio gestor, use "você" e "sua carteira".
-   Se for um terceiro consultando, use o nome do gestor na terceira pessoa.
-
-"""
-
+- `"donut"`

@@ -135,11 +135,15 @@ Quaisquer outros valores brutos do card 194 caem em `Outros`.
 | Arquivo | Gerado por | Conteúdo |
 |---|---|---|
 | `data/hubspot/hs_closer_pipeline.parquet` | `importers/hubspot_closer.py` | Pipeline do time Closer (deals, estágios, closers) |
-| `data/hubspot/hs_growth_leads.parquet` | `importers/hubspot_growth.py` | Leads dos pipelines TMB e TMR do time Growth |
+| `data/hubspot/hs_growth_leads.parquet` | `importers/hubspot_growth.py` → `importers/merge_growth_legado.py` | Leads dos pipelines TMB e TMR do time Growth, **unificados com a base legado do Pipedrive** (lida de `data/Base Legado Growth.xlsx`). Coluna `fonte` distingue `hubspot` × `pipedrive`; IDs do legado recebem prefixo `pdv_` para evitar colisão. |
 | `data/hubspot/associations_cache.json` | `importers/hubspot_growth.py` | Cache local das associações `lead_id → deal_id_closer` |
+| `data/Base Legado Growth.xlsx` | Exportação manual do Pipedrive | Input do merge — atualizar manualmente quando houver nova exportação |
 
-Refresh manual: `python -m importers.refresh`. Recomendado semanal, ou antes
-de análises de funil. Carregados apenas se `"acquisition" ∈ areas`.
+Refresh manual: `python -m importers.refresh`. O orquestrador roda em
+sequência (1) Closer importer, (2) Growth importer, (3) merge legado —
+o passo 3 sobrescreve `hs_growth_leads.parquet` com a versão unificada,
+adicionando a coluna `fonte`. Recomendado semanal, ou antes de análises
+de funil. Carregados apenas se `"acquisition" ∈ areas`.
 
 Pipeline detalhado em [HUBSPOT_IMPORT.md](HUBSPOT_IMPORT.md) e
 [METABASE_IMPORT.md](METABASE_IMPORT.md).
@@ -242,11 +246,14 @@ importers/              Extração de dados externos
   metabase.py             Cards 189/194 → fVendas + dProdutores + cache parquet
   hubspot_closer.py       Pipeline de Closer → data/hubspot/hs_closer_pipeline.parquet
   hubspot_growth.py       Funil Growth → data/hubspot/hs_growth_leads.parquet
-  refresh.py              Orquestrador dos dois importers HubSpot
+  merge_growth_legado.py  União HubSpot + Pipedrive Legado, SOBRESCREVE
+                          data/hubspot/hs_growth_leads.parquet com coluna `fonte`
+  refresh.py              Orquestrador: Closer → Growth → merge legado
 data/                   Dados gerados em runtime (gitignored)
   chats.db                SQLite (histórico de chats)
-  hubspot/                Snapshots Closer + Growth + associations_cache.json
+  hubspot/                Snapshots Closer + Growth (já unificado) + associations_cache.json
   metabase/               Cache rotativo de fVendas/dProdutores (TTL configurável)
+  Base Legado Growth.xlsx Planilha do Pipedrive legado (input do merge_growth_legado)
 design/                 Tokens, logo, regras visuais
 logs/                   Logs rotativos (5 MB × 3 backups)
 prompts.py              Todos os system prompts

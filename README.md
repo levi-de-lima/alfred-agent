@@ -145,12 +145,15 @@ título de chat gerado automaticamente pelo Haiku. Identidade visual em
 │   ├── metabase.py             Cards 189/194 → fVendas + dProdutores + cache parquet
 │   ├── hubspot_closer.py       Pipeline de Closer → data/hubspot/hs_closer_pipeline.parquet
 │   ├── hubspot_growth.py       Funil de Growth (TMB+TMR) → data/hubspot/hs_growth_leads.parquet
-│   └── refresh.py              Orquestrador dos importers HubSpot
+│   ├── merge_growth_legado.py  União HubSpot + Pipedrive Legado — SOBRESCREVE
+│   │                           data/hubspot/hs_growth_leads.parquet com coluna `fonte`
+│   └── refresh.py              Orquestrador: Closer → Growth → merge legado
 │
 ├── data/                       Dados gerados em runtime (gitignored)
 │   ├── chats.db                SQLite — histórico de chats
-│   ├── hubspot/                Snapshots dos importers HubSpot
-│   └── metabase/               Cache rotativo de fVendas/dProdutores
+│   ├── hubspot/                Snapshots dos importers HubSpot (Growth já unificado com legado)
+│   ├── metabase/               Cache rotativo de fVendas/dProdutores
+│   └── Base Legado Growth.xlsx Exportação do Pipedrive legado (input do merge)
 │
 ├── design/                     Tokens, logo, regras visuais
 ├── logs/                       Logs rotativos
@@ -215,14 +218,21 @@ Os arquivos `data/hubspot/hs_closer_pipeline.parquet` e
 aplicação como cache estático.
 
 ```bash
-python -m importers.refresh           # roda os dois importers
-python -m importers.hubspot_closer    # só Closer
-python -m importers.hubspot_growth    # só Growth
+python -m importers.refresh              # pipeline completo: Closer + Growth + merge legado
+python -m importers.hubspot_closer       # só Closer
+python -m importers.hubspot_growth       # só Growth (HubSpot puro, sem legado)
+python -m importers.merge_growth_legado  # só o merge (precisa do Growth atualizado)
 ```
 
 Recomendado semanalmente (ou antes de análises de funil relevantes).
 Os dados do Metabase são atualizados automaticamente pelo
 `importers/metabase.py` respeitando o TTL do cache.
+
+> O `refresh` termina sempre com o parquet de Growth **já unificado** —
+> o passo `merge_growth_legado` sobrescreve `hs_growth_leads.parquet`
+> acrescentando os leads do Pipedrive antigo e a coluna `fonte`
+> (`hubspot` | `pipedrive`). Para obter o "HubSpot puro", rode
+> `hubspot_growth` isoladamente. Detalhes em HUBSPOT_IMPORT.md §6.
 
 Pipeline detalhado em [HUBSPOT_IMPORT.md](HUBSPOT_IMPORT.md) e
 [METABASE_IMPORT.md](METABASE_IMPORT.md).

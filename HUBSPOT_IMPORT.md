@@ -2,8 +2,8 @@
 
 > Documenta o pipeline de extração, enriquecimento e normalização dos dados
 > de HubSpot que alimentam o `AcquisitionAgent` do Alfred. Estado atual:
-> dois importers offline + um orquestrador, materializando dois parquets
-> em `data/`.
+> dois importers HubSpot + um merge com base legado do Pipedrive +
+> um orquestrador, materializando dois parquets em `data/hubspot/`.
 
 ---
 
@@ -14,20 +14,23 @@ chamar a API durante o atendimento, o `DataAgent` lê dois arquivos parquet
 em `data/`, que são reconstruídos manualmente por scripts standalone:
 
 ```
-HubSpot API                       Parquets em data/                Runtime
-─────────────────                 ─────────────────────────         ─────────────────
-Pipeline Closer ──► importers/hubspot_closer.py    ──► hs_closer_pipeline.parquet ─┐
-                                                                                ├──► DataAgent
-Objeto Leads    ──► importers/hubspot_growth.py    ──► hs_growth_leads.parquet    ─┘   (se "acquisition" ∈ areas)
+HubSpot API                       Parquets em data/hubspot/         Runtime
+─────────────────                 ─────────────────────────          ─────────────────
+Pipeline Closer ──► importers/hubspot_closer.py    ──► hs_closer_pipeline.parquet ──┐
+                                                                                    │
+Objeto Leads    ──► importers/hubspot_growth.py    ─┐                                ├─► DataAgent
+                                                    ├─► hs_growth_leads.parquet ─────┘   (se "acquisition" ∈ areas)
+data/Base Legado Growth.xlsx ──► importers/merge_growth_legado.py ─┘  (SOBRESCREVE — coluna `fonte`)
    ↑
-   └── enriquecimento cross-pipeline: deal_id_closer via /associations/deals
+   └── enriquecimento cross-pipeline no Growth: deal_id_closer via /associations/deals
        + cache em data/hubspot/associations_cache.json
 ```
 
-Os dois importers podem rodar isoladamente ou em sequência via
-`importers/refresh.py`. Não há scheduler — o refresh é **manual** (ou
-agendado externamente: cron/Task Scheduler/GitHub Action). Recomendado
-semanal, ou antes de análises de funil relevantes.
+O orquestrador `importers/refresh.py` roda os três passos em sequência;
+cada um também pode rodar isoladamente via `python -m importers.<modulo>`.
+Não há scheduler — o refresh é **manual** (ou agendado externamente:
+cron/Task Scheduler/GitHub Action). Recomendado semanal, ou antes de
+análises de funil relevantes.
 
 ---
 
@@ -37,7 +40,8 @@ semanal, ou antes de análises de funil relevantes.
 |---|---|
 | `importers/hubspot_closer.py` | Extrai e normaliza o **Pipeline de Closer** (deals). Saída: `data/hubspot/hs_closer_pipeline.parquet`. |
 | `importers/hubspot_growth.py` | Extrai e normaliza o **funil de Growth** (leads TMB + TMR). Saída: `data/hubspot/hs_growth_leads.parquet`. Também enriquece cada lead com o `deal_id_closer` associado. |
-| `importers/refresh.py` | Orquestrador. Roda os dois importers em sequência, em subprocessos. |
+| `importers/merge_growth_legado.py` | **Une o parquet do Growth com a base legado do Pipedrive** (`data/Base Legado Growth.xlsx`) e **sobrescreve** `data/hubspot/hs_growth_leads.parquet`. Acrescenta a coluna `fonte` (`hubspot` × `pipedrive`). Detalhe completo em §6. |
+| `importers/refresh.py` | Orquestrador. Roda Closer → Growth → merge legado em sequência, em subprocessos. |
 | `data/hubspot/associations_cache.json` | Cache local das associações `lead_id → deal_id_closer` (acelera reexecuções do Growth importer). |
 
 A função pública de cada importer é importável diretamente:
@@ -183,7 +187,7 @@ Dois pipelines são tratados juntos, distinguidos por `hs_pipeline`:
 `status_lead` é derivado: estágio Qualificado de TMB → `Ganho`;
 estágios Desqualificado de TMB ou TMR → `Perda`; qualquer outro →
 `Aberto`. **Atenção:** o `Qualificado` de TMR (`1242729232`) **não**
-mapeia para Ganho hoje — ver §8.1.
+mapeia para Ganho hoje — ver §9.1.
 
 ### 5.3. Propriedades
 
@@ -271,7 +275,134 @@ da HubSpot, sem recálculo local.
 
 ---
 
-## 6. Caches
+## 6. Merge com base legado do Pipedrive — `importers/merge_growth_legado.py`
+
+Etapa final do pipeline HubSpot: roda **depois** do `hubspot_growth` e
+sobrescreve o mesmo parquet, acrescentando os leads vindos da exportação
+manual do Pipedrive antigo. Resultado: um único arquivo
+`data/hubspot/hs_growth_leads.parquet` com a coluna `fonte`
+(`hubspot` | `pipedrive`).
+
+### 6.1. Fontes
+
+| Origem | Caminho | Observação |
+|---|---|---|
+| HubSpot (saída do importer Growth) | `data/hubspot/hs_growth_leads.parquet` | Lido pelo merge logo após o Growth importer terminar |
+| Pipedrive legado (Excel) | `data/Base Legado Growth.xlsx` | Exportação manual do Pipedrive antigo. Esquema é o nome das colunas no UI do Pipedrive (em pt-BR, com prefixo `Negócio - …`, `Pessoa - …`). |
+| Saída (sobrescreve) | `data/hubspot/hs_growth_leads.parquet` | Concat dos dois DataFrames, com coluna `fonte` distinguindo cada registro. É o mesmo path lido pelo `DataAgent` — nenhuma mudança no agente. |
+
+### 6.2. Mapeamento Pipedrive → HubSpot
+
+`COLUMN_MAP` traduz **22 colunas** do schema Pipedrive (UI) para o schema do
+parquet de Growth do HubSpot. Resumo dos grupos:
+
+| Bloco | Pipedrive | HubSpot |
+|---|---|---|
+| Identificação | `Negócio - Título`, `Pessoa - E-mail - Trabalho`, `Pessoa - Telefone - Trabalho` | `nome`, `email`, `telefone` |
+| Pipeline | `Negócio - Funil`, `Negócio - Etapa`, `Negócio - Proprietário` | `pipeline_nome`, `stage_atual_nome`, `proprietario` |
+| Datas | `Negócio - Negócio criado em`, `Negócio - Atualizado em`, `Negócio - Negócio fechado em`, `Negócio - Data de perda` | `dt_criacao`, `dt_ultima_atualizacao`, `dt_fechamento_tmb`, `dt_desqualificado` |
+| Qualificação | `Negócio - Motivo da perda`, `Negócio - Score Lead`, `Negócio - Classificação ICP`, `Cluster` | `motivo_desqualificacao`, `score_total_lp`, `cluster_leadscore`, `cluster_faturamento` |
+| Respostas form | `vende cursos…`, `área de atuação`, `faturamento último ano`, `tempo implementação` | `vende_info`, `area_atuacao`, `faturamento_ultimo_ano`, `tempo_implementacao` |
+| UTM | `UTM Source/Campaing/Medium/Content/Term` | `utm_source`/`utm_campaign`/`utm_medium`/`utm_content`/`utm_term` |
+
+`EXTRA_COLUMNS` mantém **5 colunas adicionais** do Pipedrive (sem
+contraparte no schema HubSpot atual): `modelo_vendas`, `objetivo_parceria_tmb`,
+`estrutura_operacional`, `experiencia_boleto`, `onde_vende`. Elas
+aparecem no parquet unificado como colunas próprias (nulas para as
+linhas vindas do HubSpot).
+
+### 6.3. Campos derivados na linha Pipedrive
+
+| Campo | Regra |
+|---|---|
+| `status_lead` | `Negócio - Status` mapeado via `STATUS_MAP` (`Ganho`→`Ganho`, `Perdido`→`Perda`, demais → `Aberto`) |
+| `lead_id` | `"pdv_" + Negócio Pipe - ID` (string). Prefixo evita colisão com IDs numéricos do HubSpot. Fallback para `"pdv_" + index` se a coluna ID estiver ausente. |
+| `dt_novo_lead` | Cópia direta de `dt_criacao` (no Pipedrive não existe stage equivalente a "Novo Lead" do TMB com timeline própria) |
+| `dt_extracao` | `pd.Timestamp.now()` no momento do merge |
+| `fonte` | Constante `"pipedrive"` |
+
+Conversão de datas via `_to_dt()` em modo permissivo (`errors="coerce"`,
+`utc=False`).
+
+### 6.4. Fluxo de execução
+
+```
+main()
+  │
+  ├─► pd.read_parquet("data/hubspot/hs_growth_leads.parquet")
+  │     ├── idempotência: se já tiver coluna `fonte`, dropa linhas
+  │     │   onde fonte == "pipedrive" (legado de run anterior)
+  │     └── hs["fonte"] = "hubspot"
+  │
+  ├─► pd.read_excel("data/Base Legado Growth.xlsx")
+  │
+  ├─► mapear_pipedrive(pdv_raw)
+  │     ├── rename COLUMN_MAP + EXTRA_COLUMNS
+  │     ├── deriva status_lead, lead_id, dt_novo_lead, dt_extracao, fonte
+  │     └── tipa datas com _to_dt
+  │
+  ├─► corte temporal (PDV_CUTOFF_DATE)
+  │     └── descarta linhas com dt_criacao >= cutoff (default 2026-03-10)
+  │
+  ├─► pd.concat([hs, pdv], ignore_index=True)
+  │
+  └─► result.to_parquet("data/hubspot/hs_growth_leads.parquet", index=False)
+        # SOBRESCREVE o parquet do importer Growth
+```
+
+A concatenação é por união simples de schemas — pandas faz outer join
+de colunas automaticamente, então quem existe só em um lado vira NaN no
+outro.
+
+**Corte temporal (`PDV_CUTOFF_DATE`).** Constante no topo do script.
+Linhas do Pipedrive com `dt_criacao >= cutoff` são descartadas para
+evitar dupla-contagem com o HubSpot — durante a transição, os dois
+funis conviveram por algumas semanas e formulários ainda escreviam no
+Pipedrive. Após o corte, **qualquer duplicata por email entre as duas
+fontes representa duas ENTRADAS distintas no funil em momentos
+diferentes** — uma oportunidade comercial em cada época. Não é erro de
+dados; é o comportamento esperado.
+
+Valores aceitos:
+
+| Valor | Comportamento |
+|---|---|
+| `"auto"` (default) | Usa `hs["dt_criacao"].min()` — o timestamp **exato** do primeiro lead HubSpot. Preserva leads do Pipedrive criados no mesmo dia que o HubSpot arrancou, antes do primeiro registro HS. |
+| `"YYYY-MM-DD"` ou `"YYYY-MM-DD HH:MM:SS"` | Cutoff fixo. Atenção: data sem hora vira `00:00:00` — leads do Pipedrive entre meia-noite e o primeiro HS daquele dia serão cortados (foi o que aconteceu na primeira versão com `"2026-03-10"`: 27 leads únicos perdidos). |
+| `None` | Desativa o filtro. Não recomendado em produção. |
+
+**Idempotência.** Rodar o merge duas vezes em sequência sem rerodar o
+importer Growth não duplica o legado: o passo de filtro
+`fonte == "pipedrive"` no início descarta os Pipedrives da execução
+anterior antes de concatenar de novo.
+
+### 6.5. Schema do parquet unificado
+
+O parquet final contém **todas** as colunas do schema HubSpot (§5.5)
+acrescidas das colunas exclusivas do Pipedrive (`EXTRA_COLUMNS`) e da
+coluna `fonte` (`hubspot` | `pipedrive`). Linhas vindas do HubSpot ficam
+com NaN nos campos exclusivos do Pipedrive e vice-versa.
+
+### 6.6. Decisão de design e pendências
+
+Adotada a **Opção A**: o merge sobrescreve `data/hubspot/hs_growth_leads.parquet`
+diretamente. Vantagem: **zero mudança no `DataAgent` e nas tools**. O preço
+é que o "HubSpot puro" deixa de existir em disco entre execuções — sempre
+que o `refresh` roda, o parquet final já é a versão unificada. Para
+recuperar o "puro" basta rodar `python -m importers.hubspot_growth`
+isoladamente sem chamar o merge em seguida.
+
+Pendências conhecidas que **não** foram resolvidas com a Opção A:
+
+| Pendência | Impacto | Onde mexer (quando decidir resolver) |
+|---|---|---|
+| Sem deduplicação entre HubSpot e Pipedrive | Lead migrado pode contar 2x em métricas de funil/conversão | Definir regra com o time de Growth (provavelmente match por `email` normalizado + janela temporal de criação) e aplicar no fim do `mapear_pipedrive` ou após o `pd.concat` |
+| System prompt do `AcquisitionAgent` (`prompts.py`, bloco `hs_growth_leads`) ainda descreve só o schema HubSpot | LLM não sabe que existe `fonte`, e não sabe filtrar por origem. Para perguntas tipo "apenas leads HubSpot" o agente pode trazer tudo. | `prompts.py:430+` — adicionar a coluna `fonte` no bloco de schema e uma instrução "filtre `fonte == 'hubspot'` quando o usuário pedir o funil sem o legado" |
+| `importers/__init__.py` não reexporta o merge | Cosmético — o script é sempre chamado via `python -m …`, mas inconsistente com o padrão dos outros importers | `importers/__init__.py` |
+
+---
+
+## 7. Caches
 
 | Cache | Local | Escopo | Quando é invalidado |
 |---|---|---|---|
@@ -290,14 +421,16 @@ re-enriquecer, apague o JSON ou edite-o manualmente.
 
 ---
 
-## 7. Orquestrador — `importers/refresh.py`
+## 8. Orquestrador — `importers/refresh.py`
 
-Script enxuto que roda os dois importers em **subprocessos** isolados,
-propagando `HUBSPOT_TOKEN` via env:
+Script enxuto que roda os três passos em **subprocessos** isolados,
+propagando `HUBSPOT_TOKEN` via env e respeitando a ordem (o merge precisa
+do parquet do Growth já gerado):
 
 ```python
-run("hubspot_importer.py")
-run("hubspot_growth_importer.py")
+run("importers.hubspot_closer")          # 1. Closer pipeline
+run("importers.hubspot_growth")          # 2. Growth (HubSpot puro)
+run("importers.merge_growth_legado")     # 3. Une com Pipedrive legado e sobrescreve o parquet do Growth
 ```
 
 Cada `run()` captura stdout/stderr e levanta `RuntimeError` se o
@@ -307,16 +440,21 @@ não para o `settings.logger` do projeto.
 Uso típico:
 
 ```bash
-python -m importers.refresh            # roda os dois
+python -m importers.refresh                  # pipeline completo (Closer + Growth + merge)
 python -m importers.hubspot_closer           # só Closer
-python -m importers.hubspot_growth    # só Growth
+python -m importers.hubspot_growth           # só Growth (HubSpot puro; NÃO inclui legado)
+python -m importers.merge_growth_legado      # só merge (precisa do parquet do Growth atualizado)
 ```
+
+> Para obter "HubSpot puro" sem o legado, rode `hubspot_growth`
+> isoladamente. Qualquer execução do `refresh` completo termina com o
+> parquet já unificado.
 
 ---
 
-## 8. Considerações operacionais
+## 9. Considerações operacionais
 
-### 8.1. Pontos de atenção
+### 9.1. Pontos de atenção
 
 - **Mapeamento Qualificado TMR.** `_calc_status` só trata
   `qualified_stage_id_233247981` (TMB) como Ganho. O `1242729232`
@@ -338,7 +476,7 @@ python -m importers.hubspot_growth    # só Growth
   o importer inteiro. O parquet parcial salvo a cada 50 leads no
   Growth atenua isso parcialmente — mas não há retomada automática.
 
-### 8.2. Quando rodar o refresh
+### 9.2. Quando rodar o refresh
 
 | Cenário | Recomendação |
 |---|---|
@@ -347,7 +485,7 @@ python -m importers.hubspot_growth    # só Growth
 | Mudança de stage no HubSpot | Imediato — e atualizar `STAGE_NAMES` / `STAGES_TMB` / `STAGES_TMR` no código |
 | Reorganização de pipelines | Imediato — e atualizar `PIPELINE_ID` / `PIPELINES` |
 
-### 8.3. Diagnóstico rápido
+### 9.3. Diagnóstico rápido
 
 Sintomas comuns e onde olhar:
 
@@ -362,15 +500,17 @@ Sintomas comuns e onde olhar:
 
 ---
 
-## 9. Onde os dados entram no pipeline Alfred
+## 10. Onde os dados entram no pipeline Alfred
 
 Após o refresh, os parquets vivem em `data/`:
 
 ```
 data/
-├── hs_closer_pipeline.parquet
-├── hs_growth_leads.parquet
-└── hs_closer_associations_cache.json   (cache do enrich, não consumido em runtime)
+├── hubspot/
+│   ├── hs_closer_pipeline.parquet      (lido pelo DataAgent quando "acquisition" ∈ areas)
+│   ├── hs_growth_leads.parquet         (UNIFICADO: HubSpot + Pipedrive legado; coluna `fonte` distingue)
+│   └── associations_cache.json         (cache do enrich Growth, não consumido em runtime)
+└── Base Legado Growth.xlsx             (input do merge_growth_legado — exportação manual do Pipedrive)
 ```
 
 O `agents/data_agent.py` carrega esses dois parquets **apenas quando**

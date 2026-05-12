@@ -1,9 +1,17 @@
 """
 importers/refresh.py — orquestrador dos importers HubSpot.
 
-Roda hubspot_closer e hubspot_growth em subprocessos isolados, preservando
-HUBSPOT_TOKEN no env. Cada subprocesso lê o token e grava o parquet
-correspondente em data/hubspot/.
+Roda em sequência, em subprocessos isolados (preservando HUBSPOT_TOKEN
+no env):
+
+    1. importers.hubspot_closer        → data/hubspot/hs_closer_pipeline.parquet
+    2. importers.hubspot_growth        → data/hubspot/hs_growth_leads.parquet
+    3. importers.merge_growth_legado   → sobrescreve hs_growth_leads.parquet
+                                         unindo com data/Base Legado Growth.xlsx
+
+A ordem importa: o merge legado lê o parquet recém-gerado pelo importer
+Growth e regrava o mesmo arquivo, acrescentando a coluna `fonte`
+(`hubspot` | `pipedrive`).
 
 Uso:
     python -m importers.refresh
@@ -37,4 +45,5 @@ def run(module: str) -> None:
 if __name__ == "__main__":
     run("importers.hubspot_closer")
     run("importers.hubspot_growth")
+    run("importers.merge_growth_legado")
     logging.info("Atualização concluída: " + str(datetime.datetime.now()))
