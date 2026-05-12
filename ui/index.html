@@ -890,6 +890,47 @@
       color: var(--text-muted);
     }
 
+    /* Sidebar search */
+    .chat-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 var(--space-2) var(--space-2);
+      padding: 8px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+
+    [data-theme="dark"] .chat-search {
+      background: var(--surface-alt);
+    }
+
+    .chat-search:focus-within {
+      border-color: var(--brand-accent);
+    }
+
+    .chat-search input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-size: var(--fs-sm);
+      font-family: var(--font-sans);
+    }
+
+    .chat-search input::placeholder { color: var(--text-muted); }
+
+    .chat-search svg { color: var(--text-muted); flex-shrink: 0; }
+
+    .chat-search-empty {
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+      text-align: center;
+      padding: var(--space-4) var(--space-2);
+    }
+
     /* Skeleton loading */
     .chat-skeleton {
       padding: 10px 12px;
@@ -1098,6 +1139,14 @@
         </svg>
       </button>
     </div>
+    <div class="chat-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="chat-search-input" placeholder="Buscar conversa..."
+             autocomplete="off" spellcheck="false" />
+    </div>
     <div id="chat-list">
       <!-- populado pelo JS -->
     </div>
@@ -1240,6 +1289,7 @@
     const inputEl        = document.getElementById('user-input');
     const sendBtn        = document.getElementById('send-btn');
     const chatListEl     = document.getElementById('chat-list');
+    const chatSearchInput = document.getElementById('chat-search-input');
     const sidebarEl      = document.getElementById('sidebar');
     const overlayEl      = document.getElementById('sidebar-overlay');
     const newChatBtn     = document.getElementById('new-chat-btn');
@@ -1533,6 +1583,7 @@
 
     // ── Sidebar — abre um chat ────────────────────────────────────
     async function openChat(id) {
+      clearChatSearch();
       document.querySelectorAll('.chat-item').forEach(el =>
         el.classList.toggle('active', el.dataset.chatId === id));
       currentChatId = id;
@@ -1569,6 +1620,7 @@
         });
         if (!res.ok) throw new Error();
         const chat = await res.json();
+        clearChatSearch();
         currentChatId = chat.id;
         const item = buildChatItem({ ...chat, preview: '' });
         chatListEl.querySelector('.chat-list-empty')?.remove();
@@ -1699,6 +1751,36 @@
     headerMenuBtn?.addEventListener('click', toggleSidebar);
     sidebarMenuBtn?.addEventListener('click', toggleSidebar);
     overlayEl.addEventListener('click', closeSidebar);
+
+    // ── Sidebar search ────────────────────────────────────────────
+    function clearChatSearch() {
+      chatSearchInput.value = '';
+      chatListEl.querySelectorAll('.chat-item').forEach(el => el.style.display = '');
+      chatListEl.querySelector('.chat-search-empty')?.remove();
+    }
+
+    chatSearchInput.addEventListener('input', () => {
+      const q = chatSearchInput.value.trim().toLowerCase();
+      const items = chatListEl.querySelectorAll('.chat-item');
+      let visible = 0;
+      items.forEach(item => {
+        const title = item.querySelector('.chat-item-title')?.textContent.toLowerCase() || '';
+        const match = !q || title.includes(q);
+        item.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      let noResult = chatListEl.querySelector('.chat-search-empty');
+      if (visible === 0 && q) {
+        if (!noResult) {
+          noResult = document.createElement('div');
+          noResult.className = 'chat-search-empty';
+          chatListEl.appendChild(noResult);
+        }
+        noResult.textContent = `Nenhuma conversa com "${chatSearchInput.value}"`;
+      } else if (noResult) {
+        noResult.remove();
+      }
+    });
 
     // ── Modais customizados (substituem prompt/confirm nativos) ──
     function showConfirm(message) {
