@@ -466,6 +466,11 @@
     .bubble.alfred td {
       padding: var(--space-2) var(--space-3);
       border-bottom: 1px solid var(--border);
+      transition: background 80ms ease;
+    }
+
+    .bubble.alfred tbody tr:hover td {
+      background: var(--surface-alt);
     }
 
     .bubble.alfred tr:last-child td { border-bottom: none; }
