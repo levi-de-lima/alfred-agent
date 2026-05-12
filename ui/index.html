@@ -584,6 +584,13 @@
       cursor: not-allowed;
     }
 
+    /* ── KPI value — sem quebra de linha, ellipsis pro overflow ─── */
+    .kpi-value {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     /* ── Fade overlay (sobre as mensagens, abaixo do input) ─────── */
     .fade-overlay {
       position: absolute;
