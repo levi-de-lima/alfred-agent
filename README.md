@@ -114,7 +114,7 @@ título de chat gerado automaticamente pelo Haiku. Identidade visual em
 | LLMs | Anthropic Claude — **Sonnet 4.x** (análise) + **Haiku 4.5** (classificação) |
 | Dados de retenção | Metabase API (cards 189 e 194) → pandas |
 | Dados de aquisição | HubSpot API → parquet local |
-| Cache | Parquet em `cache/` com TTL configurável (padrão 4h) |
+| Cache | Parquet em `data/metabase/` com TTL configurável (padrão 4h) |
 | Persistência de chats | SQLite (`data/chats.db`) |
 | Frontend | HTML/CSS/JS vanilla, tokens em `design/` |
 
@@ -141,20 +141,27 @@ título de chat gerado automaticamente pelo Haiku. Identidade visual em
 │   ├── tools.py                Wrappers de tools (CLAUDE_TOOLS, TOOL_AREAS)
 │   └── report_agent.py         Formatação markdown final
 │
+├── importers/                  Extração de dados externos
+│   ├── metabase.py             Cards 189/194 → fVendas + dProdutores + cache parquet
+│   ├── hubspot_closer.py       Pipeline de Closer → data/hubspot/hs_closer_pipeline.parquet
+│   ├── hubspot_growth.py       Funil de Growth (TMB+TMR) → data/hubspot/hs_growth_leads.parquet
+│   └── refresh.py              Orquestrador dos importers HubSpot
+│
+├── data/                       Dados gerados em runtime (gitignored)
+│   ├── chats.db                SQLite — histórico de chats
+│   ├── hubspot/                Snapshots dos importers HubSpot
+│   └── metabase/               Cache rotativo de fVendas/dProdutores
+│
 ├── design/                     Tokens, logo, regras visuais
-├── data/                       Parquets HubSpot + chats.db
-├── cache/                      Parquets de fVendas/dProdutores
 ├── logs/                       Logs rotativos
 ├── images/                     Screenshots usados neste README
 │
-├── data_loader.py              Metabase API + cache parquet
-├── hubspot_importer.py         Refresh Closer
-├── hubspot_growth_importer.py  Refresh Growth
-├── refresh_hubspot.py          Roda os dois importers acima
 ├── prompts.py                  System prompts de todos os agentes
 ├── config.py                   Settings + logger
 ├── CLAUDE.md                   Contexto completo para o agente Claude
 ├── DESIGN.md                   Manifesto da identidade visual
+├── HUBSPOT_IMPORT.md           Pipeline detalhado de importação HubSpot
+├── METABASE_IMPORT.md          Pipeline detalhado de importação Metabase
 ├── Procfile                    Deploy (Heroku/Railway)
 └── requirements.txt
 ```
@@ -177,10 +184,10 @@ cp .env.example .env
 | `METABASE_URL` | ✅ | URL da instância Metabase |
 | `METABASE_USER` | ✅ | E-mail de login no Metabase |
 | `METABASE_PASSWORD` | ✅ | Senha do Metabase |
-| `HUBSPOT_TOKEN` | — | Token HubSpot (só para `refresh_hubspot.py`) |
+| `HUBSPOT_TOKEN` | — | Token HubSpot (só para `importers/refresh.py`) |
 | `CLAUDE_MODEL` | — | Modelo de análise (padrão `claude-sonnet-4-6`) |
 | `CLAUDE_HAIKU_MODEL` | — | Modelo de classificação (padrão `claude-haiku-4-5-20251001`) |
-| `CACHE_DIR` | — | Pasta do cache parquet (padrão `./cache`) |
+| `CACHE_DIR` | — | Pasta do cache parquet (padrão `./data/metabase`) |
 | `CACHE_MAX_AGE_HOURS` | — | TTL do cache em horas (padrão `4`) |
 | `LOG_DIR` | — | Pasta de logs (padrão `./logs`) |
 | `LOG_LEVEL` | — | Nível de log (padrão `INFO`) |
@@ -191,4 +198,59 @@ cp .env.example .env
 pip install -r requirements.txt
 ```
 
-###
+### 3. Subir o servidor
+
+```bash
+uvicorn ui.app:app --reload --port 8000
+```
+
+Acesse [http://localhost:8000](http://localhost:8000).
+
+---
+
+## Refresh dos dados HubSpot
+
+Os arquivos `data/hubspot/hs_closer_pipeline.parquet` e
+`data/hubspot/hs_growth_leads.parquet` são gerados offline e lidos pela
+aplicação como cache estático.
+
+```bash
+python -m importers.refresh           # roda os dois importers
+python -m importers.hubspot_closer    # só Closer
+python -m importers.hubspot_growth    # só Growth
+```
+
+Recomendado semanalmente (ou antes de análises de funil relevantes).
+Os dados do Metabase são atualizados automaticamente pelo
+`importers/metabase.py` respeitando o TTL do cache.
+
+Pipeline detalhado em [HUBSPOT_IMPORT.md](HUBSPOT_IMPORT.md) e
+[METABASE_IMPORT.md](METABASE_IMPORT.md).
+
+---
+
+## Dados em uma linha
+
+- **fVendas** — grid completo `produtor × mês` com `Status` calculado
+  (Ativo ≤ 61 dias · Pré-churn 61–121 · Churn > 121 · Inativo nunca vendeu).
+- **dProdutores** — dimensão de produtores: `Código`, `Produtor`, `Cluster`
+  (PP/P, M, G, GG/EG, Desativado, S/C), `Gestor`, `Data 1ª Venda`.
+- **HubSpot** — `data/hubspot/hs_closer_pipeline.parquet` e
+  `data/hubspot/hs_growth_leads.parquet`.
+
+Schema completo, regras de status, exclusões da taxa de churn e
+considerações temporais em [CLAUDE.md](CLAUDE.md).
+
+---
+
+## Deploy
+
+```
+# Procfile (Heroku / Railway)
+web: uvicorn ui.app:app --host 0.0.0.0 --port $PORT
+```
+
+O `importers/metabase.py` tem fallback para cache parquet local quando o
+Metabase está indisponível, então a aplicação continua respondendo (com
+label `cache (stale fallback)` nas citações) mesmo durante incidentes da
+fonte.

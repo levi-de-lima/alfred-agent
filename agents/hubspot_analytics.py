@@ -27,7 +27,7 @@ def _calc_closer_pipeline(
 
     if hs_closer.empty:
         return (
-            {"aviso": "Dados do Pipeline de Closer ainda não disponíveis. Execute hubspot_importer.py para importar."},
+            {"aviso": "Dados do Pipeline de Closer ainda não disponíveis. Execute `python -m importers.refresh` para importar."},
             [],
             ops + ["hs_closer vazio — importer não executado"],
         )
@@ -167,7 +167,7 @@ def _calc_growth_funnel(
 
     if hs_growth.empty:
         return (
-            {"aviso": "Dados do funil de Growth ainda não disponíveis. Execute hubspot_growth_importer.py para importar."},
+            {"aviso": "Dados do funil de Growth ainda não disponíveis. Execute `python -m importers.refresh` para importar."},
             [],
             ops + ["hs_growth vazio — importer não executado"],
         )

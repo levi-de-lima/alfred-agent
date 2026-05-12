@@ -1,5 +1,5 @@
 """
-data_agent.py — bridge entre data_loader e o restante do pipeline.
+data_agent.py — bridge entre importers.metabase e o restante do pipeline.
 
 Responsabilidade: invocar load_data(), validar o resultado e empacotar
 AnalyticsContext para o AnalyticsAgent. Não chama Claude, não roda pandas.
@@ -13,10 +13,10 @@ from pathlib import Path
 import pandas as pd
 
 from config import settings
-from data_loader import DataNormalizationError, DataUnavailableError, load_data
+from importers.metabase import DataNormalizationError, DataUnavailableError, load_data
 
-_HS_CLOSER_PARQUET = Path("data/hs_closer_pipeline.parquet")
-_HS_GROWTH_PARQUET = Path("data/hs_growth_leads.parquet")
+_HS_CLOSER_PARQUET = Path("data/hubspot/hs_closer_pipeline.parquet")
+_HS_GROWTH_PARQUET = Path("data/hubspot/hs_growth_leads.parquet")
 
 logger = settings.logger
 
@@ -51,7 +51,7 @@ class AnalyticsContext:
     hs_closer: pd.DataFrame
     hs_growth: pd.DataFrame
     data_reference_date: date
-    data_source: str        # "sharepoint" | "cache" | "cache (stale fallback)"
+    data_source: str        # "metabase" | "cache" | "cache (stale fallback)" | "none"
     loaded_at: datetime
     query_hint: str         # user_query normalizado, passado ao AnalyticsAgent
 

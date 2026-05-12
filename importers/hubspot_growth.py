@@ -1,11 +1,11 @@
 """
-hubspot_growth_importer.py — importa os Leads do funil de Growth do HubSpot.
+importers/hubspot_growth.py — importa os Leads do funil de Growth do HubSpot.
 
 Uso standalone:
-    python hubspot_growth_importer.py
+    python -m importers.hubspot_growth
 
 Uso como módulo (pelo DataAgent):
-    from hubspot_growth_importer import fetch_growth_leads
+    from importers.hubspot_growth import fetch_growth_leads
     df = fetch_growth_leads()
 """
 
@@ -25,8 +25,8 @@ import requests
 HUBSPOT_TOKEN = os.getenv("HUBSPOT_TOKEN", "")
 HUBSPOT_BASE_URL = "https://api.hubapi.com"
 PIPELINE_CLOSER_ID = "832504973"
-OUTPUT_PATH = Path("data/hs_growth_leads.parquet")
-CACHE_ASSOC_PATH = Path("data/hs_closer_associations_cache.json")
+OUTPUT_PATH = Path("data/hubspot/hs_growth_leads.parquet")
+CACHE_ASSOC_PATH = Path("data/hubspot/associations_cache.json")
 
 # Pipelines
 PIPELINES = {

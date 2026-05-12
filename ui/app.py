@@ -32,7 +32,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from agents import orchestrator
-from data_loader import load_data
+from importers.metabase import load_data
 from config import settings
 import ui.storage as storage
 

@@ -1,11 +1,11 @@
 """
-hubspot_importer.py — importa o Pipeline de Closer do HubSpot e salva em parquet.
+importers/hubspot_closer.py — importa o Pipeline de Closer do HubSpot e salva em parquet.
 
 Uso standalone:
-    python hubspot_importer.py
+    python -m importers.hubspot_closer
 
 Uso como módulo (pelo DataAgent):
-    from hubspot_importer import fetch_closer_pipeline
+    from importers.hubspot_closer import fetch_closer_pipeline
     df = fetch_closer_pipeline()
 """
 
@@ -23,7 +23,7 @@ import requests
 HUBSPOT_TOKEN = os.getenv("HUBSPOT_TOKEN", "")
 HUBSPOT_BASE_URL = "https://api.hubapi.com"
 PIPELINE_ID = "832504973"
-OUTPUT_PATH = Path("data/hs_closer_pipeline.parquet")
+OUTPUT_PATH = Path("data/hubspot/hs_closer_pipeline.parquet")
 
 PROPERTIES = [
     # Identificação

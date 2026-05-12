@@ -5,10 +5,17 @@ __pycache__/
 .env
 *.egg-info/
 
-# Dados em cache e DB de chats (gerados em runtime)
-cache/
-data/
+# Dados gerados em runtime (parquets, caches, DB de chats)
+data/**
+!data/.gitkeep
+!data/hubspot/
+!data/hubspot/.gitkeep
+!data/metabase/
+!data/metabase/.gitkeep
 logs/
+
+# Lixo / arquivos legados a serem removidos manualmente
+.trash/
 
 # IDE
 .vscode/

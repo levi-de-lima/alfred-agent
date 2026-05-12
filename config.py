@@ -1,9 +1,17 @@
+"""
+config.py — settings + logger.
+
+Carrega variáveis do .env e expõe o objeto `settings` consumido pelo
+restante do código. Apenas chaves efetivamente usadas estão aqui: o
+projeto deixou de usar SharePoint/Excel e os IDs dos cards Metabase
+(189, 194) são hardcoded em `importers/metabase.py`.
+"""
+
 import logging
 import os
 from dataclasses import dataclass, field
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from urllib.parse import unquote, urlparse
 
 from dotenv import load_dotenv
 
@@ -21,15 +29,6 @@ def _optional(key: str, default: str) -> str:
     return os.getenv(key, default)
 
 
-def _parse_sharepoint_url(url: str) -> tuple[str, str]:
-    """Extrai (site_url, server_relative_path) de uma URL completa do SharePoint."""
-    decoded = unquote(url)
-    parsed = urlparse(decoded)
-    site_url = f"{parsed.scheme}://{parsed.netloc}"
-    server_relative_path = parsed.path
-    return site_url, server_relative_path
-
-
 @dataclass
 class Settings:
     # Anthropic Claude
@@ -37,25 +36,12 @@ class Settings:
     claude_model: str        # Sonnet — raciocínio e escrita
     claude_haiku_model: str  # Haiku  — classificação e roteamento
 
-    # Arquivo local (alternativa ao SharePoint — útil com MFA/OneDrive)
-    excel_local_path: Path | None   # None se EXCEL_LOCAL_PATH não definido
-
-    # SharePoint (mantido para compatibilidade)
-    excel_file_path: str           # URL original do .env
-    sharepoint_site_url: str       # extraído automaticamente
-    sharepoint_file_path: str      # caminho relativo ao servidor, extraído automaticamente
-    sharepoint_username: str
-    sharepoint_password: str
-
     # Metabase
     metabase_url: str
     metabase_user: str
     metabase_password: str
-    metabase_db_id: int
-    metabase_table_vendas: int
-    metabase_table_produtores: int
 
-    # Cache
+    # Cache (parquets do Metabase em data/metabase/)
     cache_dir: Path
     cache_max_age_hours: int
 
@@ -82,7 +68,6 @@ def _build_logger(log_dir: Path, log_level: str) -> logging.Logger:
 
     fmt = logging.Formatter("%(message)s")
 
-    # Arquivo rotativo: 5 MB, 3 backups
     fh = RotatingFileHandler(
         log_dir / "tmb_churn.log",
         maxBytes=5 * 1024 * 1024,
@@ -92,7 +77,6 @@ def _build_logger(log_dir: Path, log_level: str) -> logging.Logger:
     fh.setFormatter(fmt)
     logger.addHandler(fh)
 
-    # Console (INFO+)
     ch = logging.StreamHandler()
     ch.setLevel(logging.INFO)
     ch.setFormatter(fmt)
@@ -102,29 +86,14 @@ def _build_logger(log_dir: Path, log_level: str) -> logging.Logger:
 
 
 def _load_settings() -> Settings:
-    excel_url = _optional("EXCEL_FILE_PATH", "")
-    site_url, file_path = _parse_sharepoint_url(excel_url) if excel_url else ("", "")
-
-    local_path_str = _optional("EXCEL_LOCAL_PATH", "")
-    excel_local_path = Path(local_path_str).resolve() if local_path_str else None
-
     return Settings(
         anthropic_api_key=_require("ANTHROPIC_API_KEY"),
         claude_model=_optional("CLAUDE_MODEL", "claude-sonnet-4-6"),
         claude_haiku_model=_optional("CLAUDE_HAIKU_MODEL", "claude-haiku-4-5-20251001"),
-        excel_local_path=excel_local_path,
-        excel_file_path=excel_url,
-        sharepoint_site_url=site_url,
-        sharepoint_file_path=file_path,
-        sharepoint_username=_optional("SHAREPOINT_USERNAME", ""),
-        sharepoint_password=_optional("SHAREPOINT_PASSWORD", ""),
         metabase_url=_optional("METABASE_URL", ""),
         metabase_user=_optional("METABASE_USER", ""),
         metabase_password=_optional("METABASE_PASSWORD", ""),
-        metabase_db_id=int(_optional("METABASE_DB_ID", "3")),
-        metabase_table_vendas=int(_optional("METABASE_TABLE_VENDAS", "645")),
-        metabase_table_produtores=int(_optional("METABASE_TABLE_PRODUTORES", "626")),
-        cache_dir=Path(_optional("CACHE_DIR", "./cache")).resolve(),
+        cache_dir=Path(_optional("CACHE_DIR", "./data/metabase")).resolve(),
         cache_max_age_hours=int(_optional("CACHE_MAX_AGE_HOURS", "4")),
         log_dir=Path(_optional("LOG_DIR", "./logs")).resolve(),
         log_level=_optional("LOG_LEVEL", "INFO"),

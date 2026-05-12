@@ -1,5 +1,5 @@
 """
-data_loader.py — camada de dados via API do Metabase.
+importers/metabase.py — camada de dados via API do Metabase.
 
 Fontes:
   Card 189 → fVendas  (Valor por produtor/mês + última data de venda)

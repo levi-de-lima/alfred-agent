@@ -350,7 +350,7 @@ def run(inp: AnalyticsInput, session_id: str) -> AnalyticsResult:
     ops_log: list[str] = []
     warnings: list[str] = []
 
-    if inp.context.data_source != "sharepoint":
+    if inp.context.data_source not in ("metabase", "none"):
         warnings.append(f"Dados carregados de {inp.context.data_source}.")
 
     try:
