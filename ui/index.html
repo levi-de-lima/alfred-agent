@@ -293,30 +293,6 @@
     [data-theme="dark"] #tmb-logo-light { display: none; }
     [data-theme="dark"] #tmb-logo-dark  { display: block; }
 
-    /* ── 3. Data badge ──────────────────────────────────────────── */
-    #data-badge {
-      display: none;
-      align-items: center;
-      gap: 6px;
-      font-size: var(--fs-xs);
-      color: var(--text-secondary);
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-full);
-      padding: 4px var(--space-3);
-    }
-
-    #data-badge.visible { display: inline-flex; }
-
-    #data-badge .dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    #data-badge.sharepoint .dot { background: var(--success); }
-    #data-badge.cache       .dot { background: var(--warning); }
 
     /* ── Chat wrapper ───────────────────────────────────────────── */
     #chat-wrapper {
@@ -373,11 +349,8 @@
     }
 
     .bubble.alfred {
-      background: var(--assistant-bubble);
-      border: 1px solid var(--border);
-      border-radius: 4px 18px 18px 18px;
-      color: var(--assistant-bubble-text);
-      padding: var(--space-3) var(--space-4);
+      color: var(--text-primary);
+      padding: 0;
       max-width: var(--assistant-bubble-max-width);
     }
 
@@ -387,6 +360,14 @@
       height: 26px;
       flex-shrink: 0;
       margin-top: 2px;
+    }
+
+    /* ── Separador entre rodadas Q&A ────────────────────────────── */
+    .round-separator {
+      border: none;
+      border-top: 1px solid var(--border);
+      opacity: 0.5;
+      margin: var(--space-6) 0;
     }
 
     /* ── Markdown dentro da bolha Alfred ────────────────────────── */
@@ -531,8 +512,6 @@
     /* ── 8. Input bar ───────────────────────────────────────────── */
     #input-bar {
       flex-shrink: 0;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
       padding: var(--space-3) var(--space-6);
       display: flex;
       justify-content: center;
@@ -732,14 +711,6 @@
       padding-right: 24px;
     }
 
-    .chat-item-preview {
-      font-size: var(--fs-xs);
-      color: var(--text-secondary);
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
-
     .chat-item-time {
       font-size: 11px;
       color: var(--text-muted);
@@ -753,7 +724,8 @@
       display: none;
     }
 
-    .chat-item:hover .chat-item-actions { display: flex; }
+    .chat-item:hover .chat-item-actions,
+    .chat-item-actions.open { display: flex; }
 
     .chat-item-menu-btn {
       background: transparent;
@@ -905,6 +877,88 @@
       color: var(--brand-accent);
     }
 
+    /* ── Modal customizado (substitui prompt() nativo) ─────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: var(--z-modal);
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.visible { display: flex; }
+
+    .modal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: var(--space-6);
+      width: 100%;
+      max-width: 360px;
+      margin: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    .modal-title {
+      font-size: var(--fs-base);
+      font-weight: var(--fw-medium);
+      color: var(--text-primary);
+    }
+
+    .modal-input {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 9px 14px;
+      font-family: var(--font-sans);
+      font-size: var(--fs-base);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+    }
+
+    .modal-input:focus {
+      border-color: var(--brand-accent);
+      box-shadow: 0 0 0 3px var(--brand-accent-light);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: var(--space-2);
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 8px 18px;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-medium);
+      transition: background var(--duration-fast);
+    }
+
+    .modal-btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+
+    .modal-btn-secondary:hover { background: var(--surface-alt); }
+
+    .modal-btn-primary {
+      background: var(--brand-accent);
+      color: #fff;
+    }
+
+    .modal-btn-primary:hover { background: var(--brand-accent-hover); }
+
     /* ── Responsive ─────────────────────────────────────────────── */
     @media (max-width: 600px) {
       .bubble.user { max-width: 95%; }
@@ -1006,11 +1060,6 @@
       <!-- TMB logo — PRETA em light, BRANCA em dark (via CSS) -->
       <img id="tmb-logo-light" class="tmb-logo" src="/static/LOGO%20TMB%20PRETA.png" alt="TMB">
       <img id="tmb-logo-dark"  class="tmb-logo" src="/static/LOGO%20TMB%20BRANCA.png" alt="TMB">
-      <!-- Data badge -->
-      <div id="data-badge">
-        <span class="dot"></span>
-        <span id="badge-text"></span>
-      </div>
     </div>
   </header>
 
@@ -1059,9 +1108,33 @@
 
   </div><!-- /#main -->
 
+  <!-- Modal — renomear conversa -->
+  <div id="modal-overlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <p id="modal-title" class="modal-title">Novo nome da conversa</p>
+      <input id="modal-input" class="modal-input" type="text" />
+      <div class="modal-actions">
+        <button id="modal-cancel" class="modal-btn modal-btn-secondary">Cancelar</button>
+        <button id="modal-ok" class="modal-btn modal-btn-primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal — confirmação de exclusão -->
+  <div id="confirm-overlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <p id="confirm-title" class="modal-title"></p>
+      <div class="modal-actions">
+        <button id="confirm-cancel" class="modal-btn modal-btn-secondary">Cancelar</button>
+        <button id="confirm-ok" class="modal-btn modal-btn-primary" style="background:var(--danger);">Apagar</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ── Estado global ─────────────────────────────────────────────
     let currentChatId = null;
+    let WELCOME_SCREEN_HTML = '';
 
     // ── marked.js config ──────────────────────────────────────────
     marked.setOptions({
@@ -1073,8 +1146,6 @@
     const messagesEl     = document.getElementById('messages');
     const inputEl        = document.getElementById('user-input');
     const sendBtn        = document.getElementById('send-btn');
-    const dataBadge      = document.getElementById('data-badge');
-    const badgeText      = document.getElementById('badge-text');
     const chatListEl     = document.getElementById('chat-list');
     const sidebarEl      = document.getElementById('sidebar');
     const overlayEl      = document.getElementById('sidebar-overlay');
@@ -1114,6 +1185,12 @@
 
     // ── Add message bubble ────────────────────────────────────────
     function addBubble(role, content, citation) {
+      if (role === 'user' && messagesEl.children.length > 0) {
+        const sep = document.createElement('hr');
+        sep.className = 'round-separator';
+        messagesEl.appendChild(sep);
+      }
+
       const row = document.createElement('div');
       row.className = `bubble-row ${role}`;
 
@@ -1213,22 +1290,7 @@
       sendBtn.disabled = loading;
     }
 
-    // ── Update data badge ─────────────────────────────────────────
-    function updateBadge(citation) {
-      if (!citation) return;
-      const isSharePoint = citation.toLowerCase().includes('sharepoint');
-      dataBadge.className = 'data-badge visible ' + (isSharePoint ? 'sharepoint' : 'cache');
-      dataBadge.id = 'data-badge';
-      dataBadge.classList.add('visible');
-      if (isSharePoint) {
-        dataBadge.classList.remove('cache');
-        dataBadge.classList.add('sharepoint');
-      } else {
-        dataBadge.classList.remove('sharepoint');
-        dataBadge.classList.add('cache');
-      }
-      badgeText.textContent = citation;
-    }
+    function updateBadge() {}
 
     // ── Main send handler ─────────────────────────────────────────
     async function handleSend() {
@@ -1242,7 +1304,6 @@
       }
 
       dismissWelcome();
-      document.getElementById('chat-empty-hint')?.remove();
       addBubble('user', message);
 
       inputEl.value = '';
@@ -1277,8 +1338,9 @@
           updateBadge(data.data_citation);
         }
 
-        // Atualiza sidebar (título auto-gerado + move pro topo)
+        // Atualiza sidebar imediatamente e depois de 3.5s para pegar título gerado pelo Haiku
         moveToTopAndRefreshTitle(currentChatId);
+        setTimeout(() => moveToTopAndRefreshTitle(currentChatId), 3500);
 
       } catch (err) {
         clearTimeout(t15); clearTimeout(t60);
@@ -1337,7 +1399,6 @@
       btn.dataset.chatId = chat.id;
       btn.innerHTML = `
         <span class="chat-item-title">${escapeHtml(chat.title)}</span>
-        ${chat.preview ? `<span class="chat-item-preview">${escapeHtml(chat.preview)}</span>` : ''}
         <span class="chat-item-time">${timeAgo(chat.updated_at)}</span>
         <div class="chat-item-actions">
           <button class="chat-item-menu-btn" aria-label="Opções">
@@ -1384,8 +1445,6 @@
       messagesEl.innerHTML = '';
       const welcome = document.getElementById('welcome-screen');
       if (welcome) welcome.remove();
-      const hint = document.getElementById('chat-empty-hint');
-      if (hint) hint.remove();
       try {
         const res = await fetch('/chats/' + id);
         if (!res.ok) throw new Error();
@@ -1394,19 +1453,17 @@
           if (msg.role === 'user') addBubble('user', msg.content);
           else addBubble('alfred', msg.content);
         });
-        if (!chat.messages.length) showChatHint();
+        if (!chat.messages.length) showWelcomeScreen();
       } catch {
         addBubble('alfred', 'Erro ao carregar conversa.');
       }
       inputEl.focus();
     }
 
-    function showChatHint() {
-      const el = document.createElement('div');
-      el.id = 'chat-empty-hint';
-      el.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--text-muted);font-size:var(--fs-sm);pointer-events:none;';
-      el.textContent = 'Nova conversa — faça uma pergunta';
-      messagesEl.appendChild(el);
+    function showWelcomeScreen() {
+      if (!document.getElementById('welcome-screen') && WELCOME_SCREEN_HTML) {
+        document.getElementById('chat-wrapper').insertAdjacentHTML('afterbegin', WELCOME_SCREEN_HTML);
+      }
     }
 
     // ── Sidebar — cria novo chat ──────────────────────────────────
@@ -1427,9 +1484,7 @@
         messagesEl.innerHTML = '';
         const welcome = document.getElementById('welcome-screen');
         if (welcome) welcome.remove();
-        const hint = document.getElementById('chat-empty-hint');
-        if (hint) hint.remove();
-        showChatHint();
+        showWelcomeScreen();
         inputEl.focus();
         return chat;
       } catch {
@@ -1463,7 +1518,14 @@
 
     // ── Sidebar — dropdown de ações ───────────────────────────────
     function openDropdown(chatId, itemBtn) {
-      document.querySelectorAll('.chat-dropdown').forEach(d => d.remove());
+      document.querySelectorAll('.chat-dropdown').forEach(d => {
+        d.closest('.chat-item-actions')?.classList.remove('open');
+        d.closest('.chat-item')?.style.removeProperty('z-index');
+        d.remove();
+      });
+      const actionsEl = itemBtn.querySelector('.chat-item-actions');
+      actionsEl.classList.add('open');
+      itemBtn.style.zIndex = '2';
       const dropdown = document.createElement('div');
       dropdown.className = 'chat-dropdown';
       dropdown.innerHTML = `
@@ -1483,9 +1545,11 @@
 
       dropdown.querySelector('[data-action="rename"]').addEventListener('click', async (e) => {
         e.stopPropagation();
+        actionsEl.classList.remove('open');
+        itemBtn.style.removeProperty('z-index');
         dropdown.remove();
         const titleEl = itemBtn.querySelector('.chat-item-title');
-        const newTitle = prompt('Novo nome da conversa:', titleEl.textContent);
+        const newTitle = await showPrompt('Novo nome da conversa', titleEl.textContent);
         if (!newTitle?.trim() || newTitle.trim() === titleEl.textContent) return;
         const res = await fetch('/chats/' + chatId, {
           method: 'PATCH',
@@ -1497,8 +1561,11 @@
 
       dropdown.querySelector('[data-action="delete"]').addEventListener('click', async (e) => {
         e.stopPropagation();
+        actionsEl.classList.remove('open');
+        itemBtn.style.removeProperty('z-index');
         dropdown.remove();
-        if (!confirm('Apagar esta conversa? Não dá pra desfazer.')) return;
+        const confirmed = await showConfirm('Apagar esta conversa? Não dá pra desfazer.');
+        if (!confirmed) return;
         await fetch('/chats/' + chatId, { method: 'DELETE' }).catch(() => {});
         const item = chatListEl.querySelector(`[data-chat-id="${chatId}"]`);
         if (item) item.remove();
@@ -1514,6 +1581,8 @@
 
       const close = (e) => {
         if (!dropdown.contains(e.target) && !itemBtn.contains(e.target)) {
+          actionsEl.classList.remove('open');
+          itemBtn.style.removeProperty('z-index');
           dropdown.remove();
           document.removeEventListener('click', close);
         }
@@ -1536,6 +1605,80 @@
     headerMenuBtn?.addEventListener('click', toggleSidebar);
     sidebarMenuBtn?.addEventListener('click', toggleSidebar);
     overlayEl.addEventListener('click', closeSidebar);
+
+    // ── Modais customizados (substituem prompt/confirm nativos) ──
+    function showConfirm(message) {
+      return new Promise((resolve) => {
+        const overlay  = document.getElementById('confirm-overlay');
+        const titleEl  = document.getElementById('confirm-title');
+        const okBtn    = document.getElementById('confirm-ok');
+        const cancelBtn = document.getElementById('confirm-cancel');
+
+        titleEl.textContent = message;
+        overlay.classList.add('visible');
+        overlay.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => okBtn.focus());
+
+        function close(value) {
+          overlay.classList.remove('visible');
+          overlay.setAttribute('aria-hidden', 'true');
+          okBtn.removeEventListener('click', onOk);
+          cancelBtn.removeEventListener('click', onCancel);
+          overlay.removeEventListener('click', onOverlayClick);
+          document.removeEventListener('keydown', onKeydown);
+          resolve(value);
+        }
+
+        function onOk()    { close(true); }
+        function onCancel() { close(false); }
+        function onKeydown(e) { if (e.key === 'Escape') close(false); }
+        function onOverlayClick(e) { if (e.target === overlay) close(false); }
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        overlay.addEventListener('click', onOverlayClick);
+        document.addEventListener('keydown', onKeydown);
+      });
+    }
+
+    function showPrompt(title, defaultValue) {
+      return new Promise((resolve) => {
+        const overlay  = document.getElementById('modal-overlay');
+        const titleEl  = document.getElementById('modal-title');
+        const input    = document.getElementById('modal-input');
+        const okBtn    = document.getElementById('modal-ok');
+        const cancelBtn = document.getElementById('modal-cancel');
+
+        titleEl.textContent = title;
+        input.value = defaultValue || '';
+        overlay.classList.add('visible');
+        overlay.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => { input.focus(); input.select(); });
+
+        function close(value) {
+          overlay.classList.remove('visible');
+          overlay.setAttribute('aria-hidden', 'true');
+          okBtn.removeEventListener('click', onOk);
+          cancelBtn.removeEventListener('click', onCancel);
+          input.removeEventListener('keydown', onKeydown);
+          overlay.removeEventListener('click', onOverlayClick);
+          resolve(value);
+        }
+
+        function onOk()    { close(input.value); }
+        function onCancel() { close(null); }
+        function onKeydown(e) {
+          if (e.key === 'Enter')  { e.preventDefault(); close(input.value); }
+          if (e.key === 'Escape') close(null);
+        }
+        function onOverlayClick(e) { if (e.target === overlay) close(null); }
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        input.addEventListener('keydown', onKeydown);
+        overlay.addEventListener('click', onOverlayClick);
+      });
+    }
 
     // ── Welcome screen dismiss ────────────────────────────────────
     function dismissWelcome() {
@@ -1560,6 +1703,9 @@
 
     // ── Init ──────────────────────────────────────────────────────
     window.addEventListener('DOMContentLoaded', async () => {
+      // Captura HTML da welcome screen antes de qualquer remoção
+      WELCOME_SCREEN_HTML = document.getElementById('welcome-screen')?.outerHTML ?? '';
+
       // Sincroniza ícones com o tema aplicado pelo anti-flicker script
       applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
 
@@ -1573,17 +1719,6 @@
         inputEl.focus();
       }
 
-      // Verifica data badge do SharePoint
-      fetch('/health')
-        .then(r => r.json())
-        .then(d => {
-          if (d.status === 'ok' && d.data_source === 'sharepoint') {
-            const month = new Date(d.data_reference_date);
-            const label = `${String(month.getMonth() + 1).padStart(2,'0')}/${month.getFullYear()}`;
-            updateBadge(`Dados de ${label} — SharePoint`);
-          }
-        })
-        .catch(() => {});
     });
   </script>
 </body>
