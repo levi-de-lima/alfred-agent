@@ -480,6 +480,29 @@
       font-style: italic;
     }
 
+    /* ── Response footnote (info-box) ───────────────────────────── */
+    .response-footnote {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      background: var(--surface-alt);
+      border-left: 2px solid var(--text-muted);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: var(--fs-xs);
+      color: var(--text-secondary);
+      margin-top: var(--space-4);
+    }
+
+    .response-footnote svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: var(--text-muted);
+    }
+
+    .response-footnote p { margin: 0; }
+    .response-footnote p + p { margin-top: 4px; }
+
     /* ── 9. Status badges ───────────────────────────────────────── */
     .badge {
       display: inline-flex;
@@ -1305,9 +1328,10 @@
         });
 
         if (citationText) {
-          const cit = document.createElement('p');
-          cit.className = 'citation';
-          cit.textContent = citationText;
+          const cit = document.createElement('div');
+          cit.className = 'response-footnote';
+          const lines = citationText.split('\n').filter(l => l.trim());
+          cit.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><div>${lines.map(l => `<p>${l}</p>`).join('')}</div>`;
           bubble.appendChild(cit);
         }
       } else {

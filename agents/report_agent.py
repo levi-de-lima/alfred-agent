@@ -549,9 +549,13 @@ def _render_summary_card_legacy(result: AnalyticsResult) -> str:
     )
 
     footer = (
-        f'<p style="font-size:12px; color:var(--ink-30); font-style:italic; margin-top:16px;">\n'
-        f'  Taxa de churn e churns novos excluem TMB Educação\n'
-        f'</p>'
+        '<div class="response-footnote">'
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>'
+        '</svg>'
+        '<div><p>Taxa de churn e churns novos excluem TMB Educação.</p></div>'
+        '</div>'
     )
 
     followup = (
