@@ -292,28 +292,30 @@ def _build_chartjs_config(block: dict) -> dict:
 
 def _render_card(campos: list[dict]) -> str:
     """Renderiza grid HTML de KPIs a partir de lista de campos definida pelo Gemini."""
-    _COR_MAP = {
-        "churn":    ("var(--status-churn-bg)",   "var(--status-churn-text)"),
-        "ativo":    ("var(--status-ativo-bg)",    "var(--status-ativo-text)"),
-        "prechurn": ("var(--status-prechurn-bg)", "var(--status-prechurn-text)"),
-        "neutro":   ("var(--surface)",            "var(--ink)"),
+    _VALUE_COLOR = {
+        "churn":    "var(--danger)",
+        "prechurn": "var(--warning)",
+        "ativo":    "var(--success)",
+        "neutro":   "var(--text-primary)",
     }
     cols = min(max(len(campos), 1), 4)
     kpi_cells = ""
     for campo in campos:
-        bg, fg = _COR_MAP.get(campo.get("cor", "neutro"), _COR_MAP["neutro"])
+        value_color = _VALUE_COLOR.get(campo.get("cor", "neutro"), "var(--text-primary)")
         label    = campo.get("label", "")
         valor    = campo.get("valor", "—")
         subtexto = campo.get("subtexto", "")
         kpi_cells += (
-            f'<div style="background:{bg};border-radius:10px;padding:16px;">\n'
-            f'  <div style="font-size:11px;color:{fg};text-transform:uppercase;'
-            f'letter-spacing:1px;margin-bottom:8px;">{label}</div>\n'
-            f'  <div style="font-size:28px;font-weight:600;color:{fg};">{valor}</div>\n'
+            f'<div style="background:var(--surface-alt);border:1px solid var(--border);'
+            f'border-radius:12px;padding:16px;">\n'
+            f'  <div style="font-size:11px;font-weight:600;color:var(--text-secondary);'
+            f'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">{label}</div>\n'
+            f'  <div style="font-size:32px;font-weight:700;color:{value_color};">{valor}</div>\n'
         )
         if subtexto:
             kpi_cells += (
-                f'  <div style="font-size:12px;color:{fg};margin-top:4px;opacity:0.8;">{subtexto}</div>\n'
+                f'  <div style="font-size:12px;font-weight:400;color:var(--text-secondary);'
+                f'margin-top:4px;">{subtexto}</div>\n'
             )
         kpi_cells += '</div>\n'
     return (
@@ -510,37 +512,37 @@ def _render_summary_card_legacy(result: AnalyticsResult) -> str:
     kpis = (
         '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px;">\n'
         # Taxa de churn
-        '  <div style="background:var(--status-churn-bg); border-radius:10px; padding:16px;">\n'
-        '    <div style="font-size:11px; color:var(--status-churn-text); text-transform:uppercase; '
-        'letter-spacing:1px; margin-bottom:8px;">Taxa de churn</div>\n'
-        f'    <div style="font-size:28px; font-weight:600; color:var(--status-churn-text);">{_fmt(taxa)}%</div>\n'
-        f'    <div style="font-size:12px; color:var(--status-churn-text); margin-top:4px; opacity:0.8;">'
+        '  <div style="background:var(--surface-alt); border:1px solid var(--border); border-radius:12px; padding:16px;">\n'
+        '    <div style="font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; '
+        'letter-spacing:0.5px; margin-bottom:8px;">Taxa de churn</div>\n'
+        f'    <div style="font-size:32px; font-weight:700; color:var(--danger);">{_fmt(taxa)}%</div>\n'
+        f'    <div style="font-size:12px; font-weight:400; color:var(--text-secondary); margin-top:4px;">'
         f'meta: 5,00% · {delta_str}pp</div>\n'
-        f'    <div style="font-size:12px; color:var(--status-churn-text); margin-top:2px; opacity:0.7;">'
+        f'    <div style="font-size:12px; font-weight:400; color:var(--text-secondary); margin-top:2px;">'
         f'{n_novos_churns} novos churns</div>\n'
         '  </div>\n'
         # Em churn
-        '  <div style="background:var(--status-churn-bg); border-radius:10px; padding:16px;">\n'
-        '    <div style="font-size:11px; color:var(--status-churn-text); text-transform:uppercase; '
-        'letter-spacing:1px; margin-bottom:8px;">Em churn</div>\n'
-        f'    <div style="font-size:28px; font-weight:600; color:var(--status-churn-text);">{n_churn}</div>\n'
-        f'    <div style="font-size:12px; color:var(--status-churn-text); margin-top:4px; opacity:0.8;">'
+        '  <div style="background:var(--surface-alt); border:1px solid var(--border); border-radius:12px; padding:16px;">\n'
+        '    <div style="font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; '
+        'letter-spacing:0.5px; margin-bottom:8px;">Em churn</div>\n'
+        f'    <div style="font-size:32px; font-weight:700; color:var(--danger);">{n_churn}</div>\n'
+        f'    <div style="font-size:12px; font-weight:400; color:var(--text-secondary); margin-top:4px;">'
         f'{_fmt(pct_churn, 1)}% da base</div>\n'
         '  </div>\n'
         # Ativos
-        '  <div style="background:var(--status-ativo-bg); border-radius:10px; padding:16px;">\n'
-        '    <div style="font-size:11px; color:var(--status-ativo-text); text-transform:uppercase; '
-        'letter-spacing:1px; margin-bottom:8px;">Ativos</div>\n'
-        f'    <div style="font-size:28px; font-weight:600; color:var(--status-ativo-text);">{n_ativo}</div>\n'
-        f'    <div style="font-size:12px; color:var(--status-ativo-text); margin-top:4px; opacity:0.8;">'
+        '  <div style="background:var(--surface-alt); border:1px solid var(--border); border-radius:12px; padding:16px;">\n'
+        '    <div style="font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; '
+        'letter-spacing:0.5px; margin-bottom:8px;">Ativos</div>\n'
+        f'    <div style="font-size:32px; font-weight:700; color:var(--success);">{n_ativo}</div>\n'
+        f'    <div style="font-size:12px; font-weight:400; color:var(--text-secondary); margin-top:4px;">'
         f'{_fmt(pct_ativo, 1)}% da base</div>\n'
         '  </div>\n'
         # Pré-churn
-        '  <div style="background:var(--status-prechurn-bg); border-radius:10px; padding:16px;">\n'
-        '    <div style="font-size:11px; color:var(--status-prechurn-text); text-transform:uppercase; '
-        'letter-spacing:1px; margin-bottom:8px;">Pré-churn</div>\n'
-        f'    <div style="font-size:28px; font-weight:600; color:var(--status-prechurn-text);">{n_prechurn}</div>\n'
-        f'    <div style="font-size:12px; color:var(--status-prechurn-text); margin-top:4px; opacity:0.8;">'
+        '  <div style="background:var(--surface-alt); border:1px solid var(--border); border-radius:12px; padding:16px;">\n'
+        '    <div style="font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; '
+        'letter-spacing:0.5px; margin-bottom:8px;">Pré-churn</div>\n'
+        f'    <div style="font-size:32px; font-weight:700; color:var(--warning);">{n_prechurn}</div>\n'
+        f'    <div style="font-size:12px; font-weight:400; color:var(--text-secondary); margin-top:4px;">'
         f'{_fmt(pct_prechurn, 1)}% da base</div>\n'
         '  </div>\n'
         '</div>\n'
