@@ -24,11 +24,11 @@
       "background":     { "value": "#F7F7F5", "description": "Fundo da página (off-white)." },
       "surface":        { "value": "#FFFFFF", "description": "Fundo do chat, cards, input, header." },
       "surfaceAlt":     { "value": "#FAFAFA", "description": "Linhas alternadas em tabelas, hover de cards." },
-      "border":         { "value": "#E5E5E3", "description": "Bordas suaves, divisores." },
-      "borderStrong":   { "value": "#D4D4D2", "description": "Borda em foco, bordas de input ativo." },
+      "border":         { "value": "#D4D4D2", "description": "Bordas suaves, divisores." },
+      "borderStrong":   { "value": "#C0C0BE", "description": "Borda em foco, bordas de input ativo." },
       "textPrimary":    { "value": "#1A1A1A", "description": "Texto principal." },
       "textSecondary":  { "value": "#6B6B6B", "description": "Texto de suporte, timestamps." },
-      "textMuted":      { "value": "#A0A0A0", "description": "Placeholders, rodapés." },
+      "textMuted":      { "value": "#7A7A7A", "description": "Placeholders, rodapés." },
       "userBubble":     { "value": "{color.brand.tmbBlue}", "description": "Fundo da bolha do usuário." },
       "userBubbleText": { "value": "#FFFFFF", "description": "Texto na bolha do usuário." },
       "assistantBubble":{ "value": "#FFFFFF", "description": "Fundo da bolha do Alfred." },
@@ -111,8 +111,8 @@
   "shadow": {
     "$description": "Sombras devem ser sutis. Não usar drop-shadow pesada — vai contra o tom Notion-like definido no DESIGN.md.",
     "none":   { "value": "none" },
-    "subtle": { "value": "0 1px 2px rgba(10, 10, 10, 0.04)" },
-    "card":   { "value": "0 1px 3px rgba(10, 10, 10, 0.06), 0 1px 2px rgba(10, 10, 10, 0.04)" }
+    "subtle": { "value": "0 1px 2px rgba(10, 10, 10, 0.10)" },
+    "card":   { "value": "0 1px 3px rgba(10, 10, 10, 0.12), 0 1px 2px rgba(10, 10, 10, 0.10)" }
   },
   "layout": {
     "chatMaxWidth":    { "value": "780px" },
