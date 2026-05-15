@@ -127,7 +127,7 @@ Fallback para Cinzel: `serif`.
 Header fundo `#F7F7F5` weight 600. Linhas alternadas branco/`#FAFAFA`. Borda `1px solid #E5E5E3`. Border-radius 8px no container. Fonte 13px.
 
 ### Input bar
-Fundo branco, border-top `#E5E5E3`. Campo: fundo `#F7F7F5`, border `#E5E5E3`, border-radius 12px. Placeholder: "Pergunte sobre o churn da TMB...". Botão enviar: círculo TMB Blue. Enter envia, Shift+Enter quebra linha.
+Fundo branco, border-top `#E5E5E3`. Campo: fundo `#F7F7F5`, border `#E5E5E3`, border-radius 12px. Placeholder: "Pergunte sobre o comercial da TMB...". Botão enviar: círculo TMB Blue. Enter envia, Shift+Enter quebra linha.
 
 ### Loading
 Três pontos em fade sequencial (não bounce) dentro de uma bolha Alfred vazia.

@@ -10,6 +10,12 @@
         t = 'dark';
       }
       document.documentElement.setAttribute('data-theme', t);
+      // Preload da imagem de background do tema ativo
+      var lnk = document.createElement('link');
+      lnk.rel = 'preload';
+      lnk.as  = 'image';
+      lnk.href = '/static/backgrounds/alfred-bg-' + t + '.webp';
+      document.head.appendChild(lnk);
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -144,6 +150,11 @@
 
       --code-bg: #F4F4F2;
 
+      --bg-image: url('/static/backgrounds/alfred-bg-light.webp');
+
+      --sidebar-bg: #F0F0EC;
+      --header-bg:  var(--surface);
+
       color-scheme: light;
     }
 
@@ -169,6 +180,11 @@
       --assistant-bubble-text: #ECECEC;
 
       --code-bg: #0F0F0F;
+
+      --bg-image: url('/static/backgrounds/alfred-bg-dark.webp');
+
+      --sidebar-bg: var(--surface);
+      --header-bg:  #1E1E1E;
 
       --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.3);
       --shadow-card:   0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -230,9 +246,14 @@
       justify-content: space-between;
       padding: 0 var(--space-6);
       height: var(--header-height);
-      background: var(--surface);
+      background: var(--header-bg);
       border-bottom: 1px solid var(--border);
       z-index: var(--z-header);
+    }
+
+    /* Empty state — remove border-bottom (box-sizing: border-box, sem layout shift) */
+    #main:has(#chat-wrapper:not(.has-messages)) #header {
+      border-bottom-width: 0;
     }
 
     .header-left {
@@ -310,6 +331,43 @@
       flex-direction: column;
       position: relative;
       overflow: hidden;
+      background-color: var(--bg);
+    }
+
+    /* Camada da imagem de fundo — pseudo-elemento permite filter isolado */
+    #chat-wrapper::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: var(--bg-image);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: 0;
+    }
+
+    [data-theme="dark"] #chat-wrapper::before {
+      filter: brightness(0.55) contrast(1.1) saturate(0.85);
+    }
+
+    [data-theme="light"] #chat-wrapper::before {
+      filter: contrast(1.08) saturate(1.05);
+    }
+
+    /* Overlay que cobre a imagem com flat color quando há mensagens */
+    #chat-wrapper::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--bg);
+      opacity: 0;
+      transition: opacity 400ms ease;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    #chat-wrapper.has-messages::after {
+      opacity: 1;
     }
 
     /* ── Messages area ──────────────────────────────────────────── */
@@ -323,6 +381,7 @@
       gap: var(--space-3);
       scroll-behavior: smooth;
       scrollbar-gutter: stable;
+      z-index: 2;
     }
 
     /* ── 6 & 7. Bubbles ─────────────────────────────────────────── */
@@ -642,6 +701,32 @@
       z-index: 5;
     }
 
+    /* No empty state: sem calha de scrollbar, fade mais alto e suave */
+    #chat-wrapper:not(.has-messages) .fade-overlay {
+      right: 0;
+      height: 160px;
+      background: linear-gradient(to bottom,
+        transparent 0%,
+        var(--bg) 80%,
+        var(--bg) 100%);
+    }
+
+    /* Fade topo — suaviza transição header→imagem no empty state */
+    .fade-overlay-top {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: linear-gradient(to bottom,
+        var(--header-bg) 0%,
+        transparent 100%);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    #chat-wrapper.has-messages .fade-overlay-top {
+      display: none;
+    }
+
     #send-btn {
       width: 36px;
       height: 36px;
@@ -653,6 +738,7 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      align-self: center;
       transition: background var(--duration-fast), transform var(--duration-fast);
     }
 
@@ -683,6 +769,36 @@
       z-index: 2;
     }
 
+    /* Vignette radial para legibilidade sobre a imagem de fundo */
+    #welcome-screen::before {
+      content: '';
+      position: absolute;
+      inset: -60px -80px;
+      background: radial-gradient(ellipse at center, var(--bg) 0%, transparent 60%);
+      opacity: 0.55;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    #welcome-screen p {
+      font-weight: 400;
+    }
+
+    [data-theme="light"] #welcome-screen p {
+      color: var(--text-primary);
+      opacity: 0.80;
+    }
+
+    [data-theme="dark"] #welcome-screen p {
+      color: var(--text-secondary);
+      opacity: 1;
+    }
+
+    #welcome-screen > * {
+      position: relative;
+      z-index: 2;
+    }
+
     #welcome-screen.fade-out { opacity: 0; }
 
     /* ── Sidebar ─────────────────────────────────────────────────── */
@@ -692,14 +808,10 @@
       display: flex;
       flex-direction: column;
       height: 100dvh;
-      background: var(--surface-alt);
+      background: var(--sidebar-bg);
       border-right: 1px solid var(--border);
       overflow: hidden;
       z-index: var(--z-sidebar);
-    }
-
-    [data-theme="dark"] #sidebar {
-      background: var(--surface);
     }
 
     .sidebar-header {
@@ -1233,7 +1345,7 @@
           <text x="157" y="82" font-family="'Cinzel', serif" font-size="58" font-weight="700" fill="currentColor" letter-spacing="4">ALFRED</text>
         </svg>
       </div>
-      <p style="font-size:var(--fs-base); color:var(--text-secondary); text-align:center; max-width:380px; line-height:var(--lh-relaxed); margin:0 auto;">
+      <p style="font-size:var(--fs-base); text-align:center; max-width:380px; line-height:var(--lh-relaxed); margin:0 auto;">
         O analista de dados do comercial da TMB.<br><br>
         Pergunte em linguagem natural sobre churn, pipeline, leads ou receita.
       </p>
@@ -1241,6 +1353,9 @@
 
     <!-- Messages -->
     <div id="messages"></div>
+
+    <!-- Fade overlay topo — emerge imagem suavemente do header (empty state) -->
+    <div class="fade-overlay-top"></div>
 
     <!-- Fade overlay — gradiente sobre as mensagens, abaixo do input -->
     <div class="fade-overlay"></div>
@@ -1251,7 +1366,7 @@
         <textarea
           id="user-input"
           rows="1"
-          placeholder="Pergunte sobre o churn da TMB..."
+          placeholder="Pergunte sobre o comercial da TMB..."
           autocomplete="off"
         ></textarea>
         <button id="send-btn" type="submit" aria-label="Enviar">
@@ -1615,6 +1730,7 @@
           else addBubble('alfred', msg.content);
         });
         if (!chat.messages.length) showWelcomeScreen();
+        else document.getElementById('chat-wrapper').classList.add('has-messages');
       } catch {
         addBubble('alfred', 'Erro ao carregar conversa.');
       }
@@ -1622,8 +1738,10 @@
     }
 
     function showWelcomeScreen() {
+      const wrapper = document.getElementById('chat-wrapper');
+      wrapper.classList.remove('has-messages');
       if (!document.getElementById('welcome-screen') && WELCOME_SCREEN_HTML) {
-        document.getElementById('chat-wrapper').insertAdjacentHTML('afterbegin', WELCOME_SCREEN_HTML);
+        wrapper.insertAdjacentHTML('afterbegin', WELCOME_SCREEN_HTML);
       }
     }
 
@@ -1878,6 +1996,7 @@
       if (!welcome) return;
       welcome.classList.add('fade-out');
       setTimeout(() => welcome.remove(), 300);
+      document.getElementById('chat-wrapper').classList.add('has-messages');
     }
 
     // ── Theme toggle ──────────────────────────────────────────────
