@@ -17,6 +17,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+_BASE_DIR = Path(__file__).parent.resolve()
+
 
 def _require(key: str) -> str:
     value = os.getenv(key)
@@ -93,9 +95,9 @@ def _load_settings() -> Settings:
         metabase_url=_optional("METABASE_URL", ""),
         metabase_user=_optional("METABASE_USER", ""),
         metabase_password=_optional("METABASE_PASSWORD", ""),
-        cache_dir=Path(_optional("CACHE_DIR", "./data/metabase")).resolve(),
+        cache_dir=Path(_optional("CACHE_DIR", str(_BASE_DIR / "data" / "metabase"))),
         cache_max_age_hours=int(_optional("CACHE_MAX_AGE_HOURS", "4")),
-        log_dir=Path(_optional("LOG_DIR", "./logs")).resolve(),
+        log_dir=Path(_optional("LOG_DIR", str(_BASE_DIR / "logs"))),
         log_level=_optional("LOG_LEVEL", "INFO"),
     )
 
