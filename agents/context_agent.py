@@ -74,6 +74,12 @@ def run(
             temperature=0.0,
         )
         raw = response.content[0].text if response.content else "{}"
+        raw = raw.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
         data = json.loads(raw)
     except Exception as exc:
         _log(session_id, "error", error=str(exc)[:200])
