@@ -247,13 +247,13 @@
       padding: 0 var(--space-6);
       height: var(--header-height);
       background: var(--header-bg);
-      border-bottom: 1px solid var(--border);
+      border-bottom: none;
       z-index: var(--z-header);
     }
 
-    /* Empty state — remove border-bottom (box-sizing: border-box, sem layout shift) */
-    #main:has(#chat-wrapper:not(.has-messages)) #header {
-      border-bottom-width: 0;
+    /* Empty state — remove border-right da sidebar */
+    body:has(#chat-wrapper:not(.has-messages)) #sidebar {
+      border-right-width: 0;
     }
 
     .header-left {
@@ -723,10 +723,6 @@
       z-index: 5;
     }
 
-    #chat-wrapper.has-messages .fade-overlay-top {
-      display: none;
-    }
-
     #send-btn {
       width: 36px;
       height: 36px;
@@ -754,6 +750,28 @@
     #send-btn svg {
       width: 18px;
       height: 18px;
+      fill: white;
+    }
+
+    #stop-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-full);
+      background: var(--text-muted);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      align-self: center;
+      transition: background var(--duration-fast), transform var(--duration-fast);
+    }
+    #stop-btn:hover  { background: var(--danger); }
+    #stop-btn:active { transform: scale(0.95); }
+    #stop-btn svg {
+      width: 16px;
+      height: 16px;
       fill: white;
     }
 
@@ -881,7 +899,6 @@
       flex: 1;
       overflow-y: auto;
       padding: var(--space-2);
-      border-top: 1px solid var(--border);
     }
 
     .chat-item {
@@ -1374,6 +1391,11 @@
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
           </svg>
         </button>
+        <button id="stop-btn" type="button" aria-label="Parar geração" style="display:none">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="4" width="16" height="16" rx="2"/>
+          </svg>
+        </button>
       </form>
     </div>
 
@@ -1419,6 +1441,7 @@
     const messagesEl     = document.getElementById('messages');
     const inputEl        = document.getElementById('user-input');
     const sendBtn        = document.getElementById('send-btn');
+    const stopBtn        = document.getElementById('stop-btn');
     const chatListEl     = document.getElementById('chat-list');
     const chatSearchInput = document.getElementById('chat-search-input');
     const sidebarEl      = document.getElementById('sidebar');
@@ -1426,6 +1449,8 @@
     const newChatBtn     = document.getElementById('new-chat-btn');
     const headerMenuBtn  = document.getElementById('header-menu-btn');
     const sidebarMenuBtn = document.getElementById('sidebar-menu-btn');
+
+    let _activeAbortController = null;
 
     // ── Auto-resize textarea ──────────────────────────────────────
     inputEl.addEventListener('input', () => {
@@ -1563,7 +1588,19 @@
     function setLoading(loading) {
       inputEl.disabled = loading;
       sendBtn.disabled = loading;
+      if (loading) {
+        sendBtn.style.display = 'none';
+        stopBtn.style.display = 'flex';
+      } else {
+        sendBtn.style.display = 'flex';
+        stopBtn.style.display = 'none';
+        _activeAbortController = null;
+      }
     }
+
+    stopBtn.addEventListener('click', () => {
+      if (_activeAbortController) _activeAbortController.abort();
+    });
 
     function updateBadge() {}
 
@@ -1577,6 +1614,11 @@
         const chat = await createChat();
         if (!chat) return;
       }
+
+      const chatId = currentChatId;          // snapshot imutável para este envio
+      const messageText = message;           // salvo para restaurar no abort
+      const abortController = new AbortController();
+      _activeAbortController = abortController;
 
       dismissWelcome();
       addBubble('user', message);
@@ -1593,10 +1635,11 @@
         'Ainda processando... Aguarde mais um momento.'), 60000);
 
       try {
-        const res = await fetch('/chats/' + currentChatId + '/messages', {
+        const res = await fetch('/chats/' + chatId + '/messages', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message }),
+          signal: abortController.signal,
         });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1604,6 +1647,8 @@
         const data = await res.json();
 
         clearTimeout(t15); clearTimeout(t60);
+        if (chatId !== currentChatId) return; // usuário navegou para outro chat
+
         loadingRow.remove();
 
         if (data.error) {
@@ -1614,14 +1659,21 @@
         }
 
         // Atualiza sidebar imediatamente e depois de 3.5s para pegar título gerado pelo Haiku
-        moveToTopAndRefreshTitle(currentChatId);
-        setTimeout(() => moveToTopAndRefreshTitle(currentChatId), 3500);
+        moveToTopAndRefreshTitle(chatId);
+        setTimeout(() => moveToTopAndRefreshTitle(chatId), 3500);
 
       } catch (err) {
         clearTimeout(t15); clearTimeout(t60);
+        if (chatId !== currentChatId) return; // usuário navegou para outro chat
+
         loadingRow.remove();
-        addBubble('alfred', 'Desculpe, ocorreu um erro ao processar sua pergunta. Tente novamente.');
-        console.error('Erro na requisição:', err);
+        if (err.name === 'AbortError') {
+          inputEl.value = messageText;
+          inputEl.dispatchEvent(new Event('input'));
+        } else {
+          addBubble('alfred', 'Desculpe, ocorreu um erro ao processar sua pergunta. Tente novamente.');
+          console.error('Erro na requisição:', err);
+        }
       } finally {
         setLoading(false);
         inputEl.focus();
