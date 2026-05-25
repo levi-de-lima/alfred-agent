@@ -391,7 +391,10 @@ def load_data(force_refresh: bool = False) -> DataPayload:
     # --- Caminho 1: cache válido ---
     if not force_refresh and cache_file and _is_cache_valid(cache_file):
         logger.info(f"Cache | usando cache válido: {cache_file.name}")
-        return _build_payload_from_cache(cache_file)
+        try:
+            return _build_payload_from_cache(cache_file)
+        except Exception as exc:
+            logger.warning(f"Cache | arquivo inválido ({exc}), regenerando via Metabase")
 
     # --- Caminho 2: Metabase ---
     try:
@@ -406,8 +409,16 @@ def load_data(force_refresh: bool = False) -> DataPayload:
         vendas     = _build_fvendas(df_189, df_194)
         produtores = _build_dprodutores(df_194, df_189)
 
-        cache_path = _save_to_cache(vendas, produtores)
-        return _make_payload(vendas, produtores, source="metabase", cache_file_path=str(cache_path))
+        try:
+            cache_path = _save_to_cache(vendas, produtores)
+        except Exception as save_exc:
+            logger.warning(f"Cache | falha ao salvar (não fatal): {save_exc}")
+            cache_path = None
+        return _make_payload(
+            vendas, produtores,
+            source="metabase",
+            cache_file_path=str(cache_path) if cache_path else "",
+        )
 
     except MetabaseError as exc:
         logger.warning(f"Metabase | falha: {exc}")
@@ -431,6 +442,10 @@ def _make_payload(
     source: Literal["metabase", "cache"],
     cache_file_path: str,
 ) -> DataPayload:
+    if "Data" not in vendas.columns:
+        raise DataNormalizationError(
+            f"Schema inválido: coluna 'Data' ausente (colunas encontradas: {list(vendas.columns)})"
+        )
     data_reference_date = vendas["Data"].max().date()
     logger.info(
         f"DataPayload | source={source} | "

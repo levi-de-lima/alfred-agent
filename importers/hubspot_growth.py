@@ -492,6 +492,13 @@ def fetch_growth_leads() -> pd.DataFrame:
 
 def main():
     df = fetch_growth_leads()
+
+    # Power BI rejeita tipo Arrow 'null' — colunas 100% vazias ficam sem tipo
+    # definido no schema e causam "dataType nao pode ser nulo" na importacao.
+    for col in df.columns:
+        if df[col].isna().all():
+            df[col] = df[col].astype(str).replace("nan", "")
+
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(OUTPUT_PATH, index=False)
     print(f"[HubSpot Growth] Salvo em {OUTPUT_PATH}")

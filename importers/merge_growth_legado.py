@@ -80,6 +80,7 @@ COLUMN_MAP = {
     "Negócio - UTM Medium":                                                        "utm_medium",
     "Negócio - UTM Content":                                                       "utm_content",
     "Negócio - UTM Term":                                                          "utm_term",
+    "Negócio - Código do Produtor na TMB":                                         "codigo_produtor",
 }
 
 # Colunas Pipedrive extras mantidas com nome renomeado
@@ -172,6 +173,12 @@ def main():
     result = pd.concat([hs, pdv], ignore_index=True)
     print(f"[Merge] Total unificado: {len(result)} registros, {len(result.columns)} colunas")
     print(f"[Merge] HubSpot: {(result['fonte'] == 'hubspot').sum()} | Pipedrive: {(result['fonte'] == 'pipedrive').sum()}")
+
+    # Power BI rejeita tipo Arrow 'null' — colunas 100% nulas em ambas as
+    # fontes (HubSpot + Pipedrive) voltariam a ser null-typed apos o concat.
+    for col in result.columns:
+        if result[col].isna().all():
+            result[col] = result[col].astype(str).replace("nan", "")
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     result.to_parquet(OUT_PATH, index=False)

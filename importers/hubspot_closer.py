@@ -340,6 +340,12 @@ def fetch_closer_pipeline() -> pd.DataFrame:
 def main():
     df = fetch_closer_pipeline()
 
+    # Power BI rejeita tipo Arrow 'null' — colunas 100% vazias ficam sem tipo
+    # definido no schema e causam "dataType não pode ser nulo" na importação.
+    for col in df.columns:
+        if df[col].isna().all():
+            df[col] = df[col].astype(str).replace("nan", "")
+
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(OUTPUT_PATH, index=False)
     print(f"[HubSpot] Salvo em {OUTPUT_PATH}")

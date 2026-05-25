@@ -17,6 +17,7 @@ já resolvido, sem precisar inferir período, identidade ou domínio.
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -73,13 +74,14 @@ def run(
             max_tokens=1024,
             temperature=0.0,
         )
-        raw = response.content[0].text if response.content else "{}"
+        raw = response.content[0].text if response.content else ""
         raw = raw.strip()
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-            raw = raw.strip()
+        # Extrai o objeto JSON mesmo que venha dentro de code fences ou texto extra
+        if not raw.startswith("{"):
+            m = re.search(r"\{[\s\S]*\}", raw)
+            raw = m.group(0) if m else ""
+        if not raw:
+            raise ValueError("Resposta vazia ou sem JSON do modelo")
         data = json.loads(raw)
     except Exception as exc:
         _log(session_id, "error", error=str(exc)[:200])

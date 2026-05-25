@@ -18,6 +18,7 @@ Rotas de histórico de chats:
 import asyncio
 import sys
 import os
+from functools import partial
 from pathlib import Path
 
 # Garante que o root do projeto está no path
@@ -26,7 +27,7 @@ sys.path.insert(0, str(ROOT))
 
 import anthropic as _anthropic
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -179,15 +180,20 @@ async def chat(req: ChatRequest):
     history = _get_history(req.session_id)
     state = _get_session_state(req.session_id)
 
-    result = orchestrator.run(
-        user_query=req.message,
-        session_id=req.session_id,
-        force_refresh=req.force_refresh,
-        conversation_history=history,
-        current_user_gestor=state.get("current_user_gestor"),
-        awaiting_identity_for=state.get("awaiting_identity_for"),
-        last_discussed_gestor=state.get("last_discussed_gestor"),
-        analytics_results_cache=state.get("analytics_results_cache"),
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(
+        None,
+        partial(
+            orchestrator.run,
+            user_query=req.message,
+            session_id=req.session_id,
+            force_refresh=req.force_refresh,
+            conversation_history=history,
+            current_user_gestor=state.get("current_user_gestor"),
+            awaiting_identity_for=state.get("awaiting_identity_for"),
+            last_discussed_gestor=state.get("last_discussed_gestor"),
+            analytics_results_cache=state.get("analytics_results_cache"),
+        ),
     )
 
     # Só persiste no histórico quando não houve erro de pipeline
@@ -273,7 +279,7 @@ def _generate_title(first_message: str) -> str:
 
 
 @app.post("/chats/{chat_id}/messages", response_model=ChatResponse)
-async def chat_message(chat_id: str, req: MessageRequest):
+async def chat_message(chat_id: str, req: MessageRequest, request: Request):
     chat = storage.get_chat(chat_id)
     if chat is None:
         raise HTTPException(status_code=404, detail="Chat não encontrado")
@@ -291,18 +297,35 @@ async def chat_message(chat_id: str, req: MessageRequest):
     history = storage.get_last_n_turns(chat_id)
     state = _get_session_state(chat_id)
 
-    result = orchestrator.run(
-        user_query=req.message,
-        session_id=chat_id,
-        force_refresh=req.force_refresh,
-        conversation_history=history,
-        current_user_gestor=state.get("current_user_gestor"),
-        awaiting_identity_for=state.get("awaiting_identity_for"),
-        last_discussed_gestor=state.get("last_discussed_gestor"),
-        analytics_results_cache=state.get("analytics_results_cache"),
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(
+        None,
+        partial(
+            orchestrator.run,
+            user_query=req.message,
+            session_id=chat_id,
+            force_refresh=req.force_refresh,
+            conversation_history=history,
+            current_user_gestor=state.get("current_user_gestor"),
+            awaiting_identity_for=state.get("awaiting_identity_for"),
+            last_discussed_gestor=state.get("last_discussed_gestor"),
+            analytics_results_cache=state.get("analytics_results_cache"),
+        ),
     )
 
     if not result.error:
+        if await request.is_disconnected():
+            logger.info(
+                f"POST /chats/{chat_id}/messages | "
+                f"cliente desconectou antes de persistir — descartando"
+            )
+            return ChatResponse(
+                markdown_response="",
+                data_citation="",
+                session_id=chat_id,
+                pipeline_duration_ms=result.pipeline_duration_ms,
+                error="aborted",
+            )
         storage.append_message(chat_id, "user", req.message)
         storage.append_message(chat_id, "assistant", result.markdown_response)
         _update_session_state(
