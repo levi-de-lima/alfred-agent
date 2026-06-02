@@ -148,7 +148,7 @@ Por isso o passo seguinte é gerar um grid completo.
    |---|---|
    | nunca teve venda | `Inativo` |
    | `dias_sem_venda ≤ 61` | `Ativo` |
-   | `61 < dias_sem_venda ≤ 121` | `Pré-churn` |
+   | `61 < dias_sem_venda ≤ 121` | `Pré-Churn` |
    | `dias_sem_venda > 121` | `Churn` |
 
 8. **`Status_Anterior`.** `groupby("produtor_id")["Status"].shift(1)` —

@@ -242,7 +242,7 @@ Pipeline detalhado em [HUBSPOT_IMPORT.md](HUBSPOT_IMPORT.md) e
 ## Dados em uma linha
 
 - **fVendas** — grid completo `produtor × mês` com `Status` calculado
-  (Ativo ≤ 61 dias · Pré-churn 61–121 · Churn > 121 · Inativo nunca vendeu).
+  (Ativo ≤ 61 dias · Pré-Churn 61–121 · Churn > 121 · Inativo nunca vendeu).
 - **dProdutores** — dimensão de produtores: `Código`, `Produtor`, `Cluster`
   (PP/P, M, G, GG/EG, Desativado, S/C), `Gestor`, `Data 1ª Venda`.
 - **HubSpot** — `data/hubspot/hs_closer_pipeline.parquet` e

@@ -276,6 +276,25 @@
       gap: var(--space-3);
     }
 
+    #explorer-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      transition: background var(--duration-fast), color var(--duration-fast);
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    #explorer-btn:hover { background: var(--brand-accent-light); color: var(--brand-accent); }
+    #explorer-btn svg { transition: transform 200ms ease; }
+    #explorer-btn:active svg { transform: rotate(15deg); }
+
     #theme-toggle {
       width: 32px;
       height: 32px;
@@ -1485,6 +1504,12 @@
     </div>
     <div class="header-right">
       <!-- Toggle dark/light mode -->
+      <!-- Link para o Data Explorer -->
+      <a href="/explorer" id="explorer-btn" aria-label="Data Explorer" title="Data Explorer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
+        </svg>
+      </a>
       <button id="theme-toggle" aria-label="Alternar tema">
         <!-- Moon: visível em light mode -->
         <svg id="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">

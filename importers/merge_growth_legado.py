@@ -176,9 +176,11 @@ def main():
 
     # Power BI rejeita tipo Arrow 'null' — colunas 100% nulas em ambas as
     # fontes (HubSpot + Pipedrive) voltariam a ser null-typed apos o concat.
+    # Colunas object com tipos mistos (ex: utm_campaign com int+str vindo do
+    # Pipedrive) também precisam ser normalizadas para str antes do to_parquet.
     for col in result.columns:
-        if result[col].isna().all():
-            result[col] = result[col].astype(str).replace("nan", "")
+        if result[col].dtype == object:
+            result[col] = result[col].where(result[col].isna(), result[col].astype(str)).replace("nan", "")
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     result.to_parquet(OUT_PATH, index=False)

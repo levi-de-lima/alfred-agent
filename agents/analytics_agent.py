@@ -773,14 +773,14 @@ def _calc_churn_rate(
         .reset_index(name="count")
     )
 
-    churn_monthly = monthly[monthly["Status"].isin(["Churn", "Pré-churn"])].copy()
+    churn_monthly = monthly[monthly["Status"].isin(["Churn", "Pré-Churn"])].copy()
     total_monthly = monthly.groupby("Data")["count"].sum().reset_index(name="total")
     merged = churn_monthly.merge(total_monthly, on="Data")
     merged["taxa_pct"] = (merged["count"] / merged["total"] * 100).round(1)
     merged["Data"] = merged["Data"].dt.strftime("%Y-%m")
 
     total_churn = int(monthly[monthly["Status"] == "Churn"]["count"].sum())
-    total_prechurn = int(monthly[monthly["Status"] == "Pré-churn"]["count"].sum())
+    total_prechurn = int(monthly[monthly["Status"] == "Pré-Churn"]["count"].sum())
     total_geral = int(monthly["count"].sum())
 
     summary = {
@@ -798,7 +798,7 @@ def _calc_churn_rate(
 def _calc_at_risk(
     plan: QueryPlan, vendas: pd.DataFrame, produtores: pd.DataFrame
 ) -> tuple[dict, list[dict], list[str]]:
-    ops = ["Identificando produtores em risco (Pré-churn)"]
+    ops = ["Identificando produtores em risco (Pré-Churn)"]
 
     gestor_filter = plan.get_filter("gestor")
     cluster_filter = plan.get_filter("cluster")
@@ -812,7 +812,7 @@ def _calc_at_risk(
         .groupby("Código", as_index=False)
         .last()[["Código", "Produtor", "Status", "Data"]]
     )
-    at_risk = latest[latest["Status"].isin(["Pré-churn", "Churn"])].copy()
+    at_risk = latest[latest["Status"].isin(["Pré-Churn", "Churn"])].copy()
     ops.append(f"Produtores em risco antes de filtros: {len(at_risk)}")
 
     # Join com cadastro para obter Cluster e Gestor
@@ -844,7 +844,7 @@ def _calc_at_risk(
     valor_total_risco = round(merged["Valor Médio Histórico (R$)"].sum(), 2)
     summary = {
         "total_em_risco": len(merged),
-        "prechurn": int((merged["Status"] == "Pré-churn").sum()),
+        "prechurn": int((merged["Status"] == "Pré-Churn").sum()),
         "churn": int((merged["Status"] == "Churn").sum()),
         "valor_total_em_risco": valor_total_risco,
     }
@@ -1256,7 +1256,7 @@ def _calc_churn_value_impact(
 ) -> tuple[dict, list[dict], list[str]]:
     """
     Calcula o valor em risco por churn:
-    - Identifica produtores que transitaram para Pré-churn ou Churn no período
+    - Identifica produtores que transitaram para Pré-Churn ou Churn no período
     - Calcula o valor médio mensal histórico (meses Ativos) de cada um
     - Retorna valor total em risco, agrupado por cluster e gestor
     """
@@ -1265,13 +1265,13 @@ def _calc_churn_value_impact(
     df = _filter_by_period(vendas, plan)
     ops.append(f"Período filtrado: {df['Data'].min().date()} → {df['Data'].max().date()} | {len(df)} linhas")
 
-    # Produtores em risco no período (status final = Pré-churn ou Churn)
+    # Produtores em risco no período (status final = Pré-Churn ou Churn)
     latest = (
         df.sort_values("Data")
         .groupby("Código", as_index=False)
         .last()[["Código", "Produtor", "Status", "Data"]]
     )
-    at_risk = latest[latest["Status"].isin(["Pré-churn", "Churn"])].copy()
+    at_risk = latest[latest["Status"].isin(["Pré-Churn", "Churn"])].copy()
     ops.append(f"Produtores em risco no período: {len(at_risk)}")
 
     if at_risk.empty:
@@ -1321,7 +1321,7 @@ def _calc_churn_value_impact(
 
     summary = {
         "total_produtores_em_risco": len(at_risk),
-        "prechurn": int((at_risk["Status"] == "Pré-churn").sum()),
+        "prechurn": int((at_risk["Status"] == "Pré-Churn").sum()),
         "churn": int((at_risk["Status"] == "Churn").sum()),
         "valor_total_em_risco": valor_total_risco,
         "por_cluster": por_cluster,
@@ -1346,7 +1346,7 @@ def _extract_cycles(producer_history: pd.DataFrame) -> list[dict]:
       - Novo ciclo começa quando: primeiro registro Ativo  OU
         Status == "Ativo" E Status_Anterior == "Churn"
       - Ciclo encerrado quando: Status == "Churn"
-      - Valor acumulado = soma de Valor nos meses Ativo + Pré-churn do ciclo
+      - Valor acumulado = soma de Valor nos meses Ativo + Pré-Churn do ciclo
 
     Retorna lista de dicts:
       [{"ciclo": int, "inicio": date, "fim": date|None,
@@ -1384,8 +1384,8 @@ def _extract_cycles(producer_history: pd.DataFrame) -> list[dict]:
                 "encerrado": False,
             }
 
-        # Acumula dentro do ciclo atual (Ativo ou Pré-churn)
-        if current is not None and status in ("Ativo", "Pré-churn"):
+        # Acumula dentro do ciclo atual (Ativo ou Pré-Churn)
+        if current is not None and status in ("Ativo", "Pré-Churn"):
             current["meses"] += 1
             current["valor_total"] += valor
 
@@ -1792,9 +1792,9 @@ def _calc_churn_rate_base(
     Taxa de churn TMB para o mês M.
 
     Fórmula:
-      Numerador   = produtores com Status=="Churn" AND Status_Anterior=="Pré-churn" em M
+      Numerador   = produtores com Status=="Churn" AND Status_Anterior=="Pré-Churn" em M
                     (contagem distinta por Código)
-      Denominador = produtores com Status=="Ativo" OR Status=="Pré-churn" em M-1
+      Denominador = produtores com Status=="Ativo" OR Status=="Pré-Churn" em M-1
                     (contagem distinta por Código)
       Taxa        = Numerador / Denominador * 100
 
@@ -1822,14 +1822,14 @@ def _calc_churn_rate_base(
             "diferenca_meta_pp": None,
         }
     base = int(
-        mes_anterior[mes_anterior["Status"].isin(["Ativo", "Pré-churn"])]["Código"].nunique()
+        mes_anterior[mes_anterior["Status"].isin(["Ativo", "Pré-Churn"])]["Código"].nunique()
     )
 
-    # Numerador: novos churns em M (Pré-churn → Churn)
+    # Numerador: novos churns em M (Pré-Churn → Churn)
     mes_atual = vendas[(vendas["Data"].dt.month == month) & (vendas["Data"].dt.year == year)]
     churns_novos = int(
         mes_atual[
-            (mes_atual["Status"] == "Churn") & (mes_atual["Status_Anterior"] == "Pré-churn")
+            (mes_atual["Status"] == "Churn") & (mes_atual["Status_Anterior"] == "Pré-Churn")
         ]["Código"].nunique()
     )
 
@@ -1853,11 +1853,11 @@ def _calc_churn_rate_base_dim(
     pm, py = _prev_month(month, year)
 
     prev = vendas_dim[(vendas_dim["Data"].dt.month == pm) & (vendas_dim["Data"].dt.year == py)]
-    base = int(prev[prev["Status"].isin(["Ativo", "Pré-churn"])]["Código"].nunique())
+    base = int(prev[prev["Status"].isin(["Ativo", "Pré-Churn"])]["Código"].nunique())
 
     curr = vendas_dim[(vendas_dim["Data"].dt.month == month) & (vendas_dim["Data"].dt.year == year)]
     churns_novos = int(curr[
-        (curr["Status"] == "Churn") & (curr["Status_Anterior"] == "Pré-churn")
+        (curr["Status"] == "Churn") & (curr["Status_Anterior"] == "Pré-Churn")
     ]["Código"].nunique())
 
     taxa_pct = round(churns_novos / base * 100, 2) if base > 0 else 0.0
@@ -1890,7 +1890,7 @@ def _calc_churn_rate_analysis(
       Modo 2 — histórico (sem filtro): série temporal completa
       Modo 3 — por gestor (group_by="Gestor"): taxa por gestor com semáforo
     """
-    ops = ["Calculando taxa de churn TMB (Pré-churn→Churn / base Ativo+Pré-churn mês anterior)"]
+    ops = ["Calculando taxa de churn TMB (Pré-Churn→Churn / base Ativo+Pré-Churn mês anterior)"]
 
     # Exclui gestores fora do escopo do cálculo de churn
     codigos_excluidos = set(
@@ -2151,7 +2151,7 @@ def _calc_churn_report_summary(
 
     n_churn    = int(counts.get("Churn", 0))
     n_ativo    = int(counts.get("Ativo", 0))
-    n_prechurn = int(counts.get("Pré-churn", 0))
+    n_prechurn = int(counts.get("Pré-Churn", 0))
     pct_churn    = round(n_churn    / total_base * 100, 1) if total_base else 0.0
     pct_ativo    = round(n_ativo    / total_base * 100, 1) if total_base else 0.0
     pct_prechurn = round(n_prechurn / total_base * 100, 1) if total_base else 0.0
@@ -2167,11 +2167,11 @@ def _calc_churn_report_summary(
     _vf_h = vendas_f.copy()
     _vf_h["_period"] = _vf_h["Data"].dt.to_period("M")
     _base_pp = (
-        _vf_h[_vf_h["Status"].isin(["Ativo", "Pré-churn"])]
+        _vf_h[_vf_h["Status"].isin(["Ativo", "Pré-Churn"])]
         .groupby("_period")["Código"].nunique()
     )
     _churn_pp = (
-        _vf_h[(_vf_h["Status"] == "Churn") & (_vf_h["Status_Anterior"] == "Pré-churn")]
+        _vf_h[(_vf_h["Status"] == "Churn") & (_vf_h["Status_Anterior"] == "Pré-Churn")]
         .groupby("_period")["Código"].nunique()
     )
     pm1, py1 = _prev_month(ref_month, ref_year)
@@ -2345,11 +2345,11 @@ def _calc_churn_report(
     _vf_h = vendas_filtradas.copy()
     _vf_h["_period"] = _vf_h["Data"].dt.to_period("M")
     _base_por_period = (
-        _vf_h[_vf_h["Status"].isin(["Ativo", "Pré-churn"])]
+        _vf_h[_vf_h["Status"].isin(["Ativo", "Pré-Churn"])]
         .groupby("_period")["Código"].nunique()
     )
     _churns_por_period = (
-        _vf_h[(_vf_h["Status"] == "Churn") & (_vf_h["Status_Anterior"] == "Pré-churn")]
+        _vf_h[(_vf_h["Status"] == "Churn") & (_vf_h["Status_Anterior"] == "Pré-Churn")]
         .groupby("_period")["Código"].nunique()
     )
 
@@ -2383,8 +2383,8 @@ def _calc_churn_report(
     }
     ops.append(f"Taxa de churn {_mes_label(ref_month, ref_year)}: {churn_rate_mes.get('taxa_pct')}%")
 
-    # ── c) Churns novos no mês (Pré-churn → Churn) ────────────────────────
-    plan_churns = _MockPlan({**month_filter, "from_status": "Pré-churn", "to_status": "Churn"})
+    # ── c) Churns novos no mês (Pré-Churn → Churn) ────────────────────────
+    plan_churns = _MockPlan({**month_filter, "from_status": "Pré-Churn", "to_status": "Churn"})
     s_churns, t_churns, _ = _calc_status_transitions(plan_churns, vendas, produtores)
 
     churns_novos_total = s_churns.get("total_transicoes", 0)
@@ -2454,7 +2454,7 @@ def _calc_churn_report(
     _, t_cluster, _ = _calc_cluster_breakdown(plan_cluster, vendas_churn_mes, produtores)
 
     # ── e) Recuperações no mês ────────────────────────────────────────────
-    plan_rec1 = _MockPlan({**month_filter, "from_status": "Pré-churn", "to_status": "Ativo"})
+    plan_rec1 = _MockPlan({**month_filter, "from_status": "Pré-Churn", "to_status": "Ativo"})
     s_rec1, t_rec1, _ = _calc_status_transitions(plan_rec1, vendas, produtores)
 
     plan_rec2 = _MockPlan({**month_filter, "from_status": "Churn", "to_status": "Ativo"})
@@ -2480,7 +2480,7 @@ def _calc_churn_report(
     }
     ops.append(f"Recuperações no mês: {recuperacoes_section['total']}")
 
-    # ── f) Pré-churn em risco — top 5 ─────────────────────────────────────
+    # ── f) Pré-Churn em risco — top 5 ─────────────────────────────────────
     plan_risk = _MockPlan(month_filter)
     _, t_risk, _ = _calc_at_risk(plan_risk, vendas, produtores)
 
@@ -2490,7 +2490,7 @@ def _calc_churn_report(
             (vendas["Data"].dt.month == ref_month)
             & (vendas["Data"].dt.year == ref_year)
             & (vendas["Status"] == "Churn")
-            & (vendas["Status_Anterior"] == "Pré-churn"),
+            & (vendas["Status_Anterior"] == "Pré-Churn"),
             "Código",
         ]
     )
@@ -2500,7 +2500,7 @@ def _calc_churn_report(
     )
     t_risk = [r for r in t_risk if r.get("Produtor") not in _nomes_churns_novos]
 
-    # Meses consecutivos em Pré-churn até o mês de referência (vectorizado)
+    # Meses consecutivos em Pré-Churn até o mês de referência (vectorizado)
     ref_ts = pd.Timestamp(f"{ref_year}-{ref_month:02d}-01")
 
     # Filtra apenas os Códigos dos produtores em risco — evita operar em 658k linhas
@@ -2514,7 +2514,7 @@ def _calc_churn_report(
         .sort_values(["Código", "Data"], ascending=[True, False])
         .copy()
     )
-    _vf_risk["_not_pc"] = (_vf_risk["Status"] != "Pré-churn").astype(int)
+    _vf_risk["_not_pc"] = (_vf_risk["Status"] != "Pré-Churn").astype(int)
     _vf_risk["_break"] = _vf_risk.groupby("Código")["_not_pc"].cumsum()
     _meses_pc_risk = (
         _vf_risk[_vf_risk["_break"] == 0]
@@ -2533,18 +2533,18 @@ def _calc_churn_report(
         prod_name = r.get("Produtor", "")
         codigo = _nome_para_codigo.get(prod_name)
         r["Faturamento últ. 12m (R$)"] = float(valor_12m_por_codigo.get(codigo, 0.0)) if codigo else 0.0
-        r["Meses em Pré-churn"] = int(_meses_pc_risk.get(codigo, 0)) if codigo else 0
+        r["Meses em Pré-Churn"] = int(_meses_pc_risk.get(codigo, 0)) if codigo else 0
 
     t_risk_sorted = sorted(
         t_risk,
-        key=lambda r: (-r.get("Meses em Pré-churn", 0), -r.get("Faturamento últ. 12m (R$)", 0)),
+        key=lambda r: (-r.get("Meses em Pré-Churn", 0), -r.get("Faturamento últ. 12m (R$)", 0)),
     )[:5]
 
     prechurn_section = {
         "total_em_risco": len(t_risk),
         "top5": t_risk_sorted,
     }
-    ops.append(f"Produtores em Pré-churn (excluindo churns novos): {len(t_risk)}")
+    ops.append(f"Produtores em Pré-Churn (excluindo churns novos): {len(t_risk)}")
 
     # ── g) Análise por gestor ──────────────────────────────────────────────
     plan_gest_status = _MockPlan(month_filter)
@@ -2561,11 +2561,11 @@ def _calc_churn_report(
     for r in t_gest_status:
         g = r.get("Gestor", "")
         if g not in gest_status_agg:
-            gest_status_agg[g] = {"total": 0, "Churn": 0, "Pré-churn": 0, "Ativo": 0}
+            gest_status_agg[g] = {"total": 0, "Churn": 0, "Pré-Churn": 0, "Ativo": 0}
         gest_status_agg[g]["total"] += r.get("Qtd", 0)
         gest_status_agg[g][r.get("Status", "")] = r.get("Qtd", 0)
 
-    # Busca top produtor em Pré-churn por gestor (pelo maior valor histórico)
+    # Busca top produtor em Pré-Churn por gestor (pelo maior valor histórico)
     prechurn_por_gestor: dict[str, str] = {}
     for r in t_risk:
         g = r.get("Gestor", "")
@@ -2585,10 +2585,10 @@ def _calc_churn_report(
             "Carteira Total": agg["total"],
             "Churns Novos": churns_novos_por_gestor.get(g, 0),
             "% Churn": round(agg.get("Churn", 0) / total * 100, 1),
-            "% Pré-churn": round(agg.get("Pré-churn", 0) / total * 100, 1),
+            "% Pré-Churn": round(agg.get("Pré-Churn", 0) / total * 100, 1),
             "Taxa Churn Mês (%)": taxa_info.get("taxa_pct"),
             "Diferença Meta (pp)": taxa_info.get("diferenca_meta_pp"),
-            "Top Pré-churn": prechurn_por_gestor.get(g, "—"),
+            "Top Pré-Churn": prechurn_por_gestor.get(g, "—"),
         })
     gestores_table.sort(key=lambda r: (r.get("Taxa Churn Mês (%)") or 0), reverse=True)
 
@@ -2608,9 +2608,9 @@ def _calc_churn_report(
         {"secao": "Churns Novos no Mês", "dados": churns_novos_section["lista"]},
         {"secao": "Churns Novos — Distribuição por Gestor", "dados": _dist_cn},
         {"secao": "Distribuição Churns por Cluster", "dados": t_cluster},
-        {"secao": "Recuperações — Pré-churn → Ativo", "dados": recuperacoes_section["prechurn_para_ativo"]["lista"]},
+        {"secao": "Recuperações — Pré-Churn → Ativo", "dados": recuperacoes_section["prechurn_para_ativo"]["lista"]},
         {"secao": "Recuperações — Churn → Ativo", "dados": recuperacoes_section["churn_para_ativo"]["lista"]},
-        {"secao": "Pré-churn em Risco — Top 5", "dados": t_risk_sorted},
+        {"secao": "Pré-Churn em Risco — Top 5", "dados": t_risk_sorted},
         {"secao": "Análise por Gestor", "dados": gestores_table},
     ]
 
@@ -2948,7 +2948,7 @@ def _calc_produtores(
     summary = {
         "total": len(merged),
         "valor_total_em_risco": round(merged["Valor Médio Histórico (R$)"].sum(), 2),
-        "prechurn": int((merged["Status"] == "Pré-churn").sum()),
+        "prechurn": int((merged["Status"] == "Pré-Churn").sum()),
         "churn": int((merged["Status"] == "Churn").sum()),
     }
     ops.append(f"Produtores retornados: {len(merged)} | order_by={order_by}")
@@ -3037,7 +3037,7 @@ def _calc_faturamento(
 def _calc_churns_novos(
     plan: QueryPlan, vendas: pd.DataFrame, produtores: pd.DataFrame
 ) -> tuple[dict, list[dict], list[str]]:
-    """Produtores que churnou no mês (Pré-churn → Churn), com filtros opcionais por gestor/cluster."""
+    """Produtores que churnou no mês (Pré-Churn → Churn), com filtros opcionais por gestor/cluster."""
     ops = ["Iniciando cálculo de churns novos"]
 
     raw_month = plan.filters.get("month")
@@ -3055,7 +3055,7 @@ def _calc_churns_novos(
     gestor_filtro = plan.filters.get("gestor")
     cluster_filtro = plan.filters.get("cluster")
 
-    month_filter: dict = {"month": ref_month, "year": ref_year, "from_status": "Pré-churn", "to_status": "Churn"}
+    month_filter: dict = {"month": ref_month, "year": ref_year, "from_status": "Pré-Churn", "to_status": "Churn"}
     if gestor_filtro:
         month_filter["gestor"] = gestor_filtro
     if cluster_filtro:
@@ -3123,7 +3123,7 @@ def _calc_churns_novos(
 def _calc_recuperacoes(
     plan: QueryPlan, vendas: pd.DataFrame, produtores: pd.DataFrame
 ) -> tuple[dict, list[dict], list[str]]:
-    """Produtores que se recuperaram no mês (Pré-churn→Ativo e Churn→Ativo), filtro opcional por gestor."""
+    """Produtores que se recuperaram no mês (Pré-Churn→Ativo e Churn→Ativo), filtro opcional por gestor."""
     ops = ["Iniciando cálculo de recuperações"]
 
     raw_month = plan.filters.get("month")
@@ -3143,7 +3143,7 @@ def _calc_recuperacoes(
     if gestor_filtro:
         month_filter["gestor"] = gestor_filtro
 
-    plan_rec1 = _MockPlan({**month_filter, "from_status": "Pré-churn", "to_status": "Ativo"})
+    plan_rec1 = _MockPlan({**month_filter, "from_status": "Pré-Churn", "to_status": "Ativo"})
     s_rec1, t_rec1, _ = _calc_status_transitions(plan_rec1, vendas, produtores)
 
     plan_rec2 = _MockPlan({**month_filter, "from_status": "Churn", "to_status": "Ativo"})
@@ -3158,7 +3158,7 @@ def _calc_recuperacoes(
 
     total_pc = s_rec1.get("total_transicoes", 0)
     total_ch = s_rec2.get("total_transicoes", 0)
-    ops.append(f"Recuperações {_mes_label(ref_month, ref_year)}: {total_pc + total_ch} (Pré-churn→Ativo: {total_pc}, Churn→Ativo: {total_ch})")
+    ops.append(f"Recuperações {_mes_label(ref_month, ref_year)}: {total_pc + total_ch} (Pré-Churn→Ativo: {total_pc}, Churn→Ativo: {total_ch})")
 
     summary_stats = {
         "mes_referencia": _mes_label(ref_month, ref_year),
@@ -3167,7 +3167,7 @@ def _calc_recuperacoes(
         "churn_para_ativo": {"total": total_ch, "lista": _top5(t_rec2)},
     }
     tabular_data = [
-        {"secao": "Recuperações — Pré-churn → Ativo", "dados": _top5(t_rec1)},
+        {"secao": "Recuperações — Pré-Churn → Ativo", "dados": _top5(t_rec1)},
         {"secao": "Recuperações — Churn → Ativo", "dados": _top5(t_rec2)},
     ]
     return summary_stats, tabular_data, ops
@@ -3299,8 +3299,8 @@ def _calc_manager_report(
     plan_cluster = _MockPlan(month_filter)
     _, t_cluster_raw, _ = _calc_cluster_breakdown(plan_cluster, vendas_gest, produtores)
 
-    # Pivota para formato wide: Cluster | Ativo | Pré-churn | Churn
-    _status_cols = ["Ativo", "Pré-churn", "Churn"]
+    # Pivota para formato wide: Cluster | Ativo | Pré-Churn | Churn
+    _status_cols = ["Ativo", "Pré-Churn", "Churn"]
     if t_cluster_raw:
         _df_tidy = pd.DataFrame(t_cluster_raw)
         _pivot = (
@@ -3339,7 +3339,7 @@ def _calc_manager_report(
     }
 
     # ── d) Churns novos e taxa de churn ───────────────────────────────────
-    plan_churns = _MockPlan({**month_filter, "from_status": "Pré-churn", "to_status": "Churn"})
+    plan_churns = _MockPlan({**month_filter, "from_status": "Pré-Churn", "to_status": "Churn"})
     s_churns, _, _ = _calc_status_transitions(plan_churns, vendas_gest, produtores)
 
     taxa_mes = _calc_churn_rate_base(vendas_gest, ref_month, ref_year, produtores)
@@ -3359,7 +3359,7 @@ def _calc_manager_report(
             (vendas_gest["Data"].dt.month == ref_month)
             & (vendas_gest["Data"].dt.year == ref_year)
             & (vendas_gest["Status"] == "Churn")
-            & (vendas_gest["Status_Anterior"] == "Pré-churn"),
+            & (vendas_gest["Status_Anterior"] == "Pré-Churn"),
             "Código",
         ]
     )
@@ -3370,7 +3370,7 @@ def _calc_manager_report(
         for _, row in hist.iterrows():
             if row["Data"] > ref_ts:
                 continue
-            if row["Status"] == "Pré-churn":
+            if row["Status"] == "Pré-Churn":
                 count += 1
             else:
                 break
@@ -3386,7 +3386,7 @@ def _calc_manager_report(
         churns_top5.append({
             "Produtor": prod_name,
             "Cluster": cluster,
-            "Meses em Pré-churn": meses_pc,
+            "Meses em Pré-Churn": meses_pc,
             "Valor 12m (R$)": val_12m,
         })
     churns_top5.sort(key=lambda r: -r["Valor 12m (R$)"])
@@ -3400,13 +3400,13 @@ def _calc_manager_report(
     }
     ops.append(f"Churns novos: {churns_section['total']} | Taxa: {taxa_mes.get('taxa_pct')}%")
 
-    # ── e) Pré-churn em risco ─────────────────────────────────────────────
-    # Apenas produtores com Status == "Pré-churn" no mês de referência,
+    # ── e) Pré-Churn em risco ─────────────────────────────────────────────
+    # Apenas produtores com Status == "Pré-Churn" no mês de referência,
     # excluindo quem já virou Churn nesse mesmo mês
     prechurn_mes = vendas_gest[
         (vendas_gest["Data"].dt.month == ref_month)
         & (vendas_gest["Data"].dt.year == ref_year)
-        & (vendas_gest["Status"] == "Pré-churn")
+        & (vendas_gest["Status"] == "Pré-Churn")
         & (~vendas_gest["Código"].isin(codigos_churns))
     ][["Código", "Produtor"]].drop_duplicates(subset=["Código"])
 
@@ -3427,25 +3427,25 @@ def _calc_manager_report(
             "Produtor": prod_name,
             "Cluster": cluster,
             "Valor 12m (R$)": float(valor_12m_por_codigo.get(codigo, 0.0)),
-            "Meses em Pré-churn": _meses_consec_prechurn_gest(codigo),
+            "Meses em Pré-Churn": _meses_consec_prechurn_gest(codigo),
         })
 
     t_risk_sorted = sorted(
         t_risk,
-        key=lambda r: (-r.get("Meses em Pré-churn", 0), -r.get("Valor 12m (R$)", 0)),
+        key=lambda r: (-r.get("Meses em Pré-Churn", 0), -r.get("Valor 12m (R$)", 0)),
     )
 
     prechurn_section = {
         "total_em_risco": len(t_risk_sorted),
         "lista": [
-            {k: v for k, v in r.items() if k in ("Produtor", "Cluster", "Meses em Pré-churn", "Valor 12m (R$)")}
+            {k: v for k, v in r.items() if k in ("Produtor", "Cluster", "Meses em Pré-Churn", "Valor 12m (R$)")}
             for r in t_risk_sorted
         ],
     }
-    ops.append(f"Pré-churn em risco: {len(t_risk_sorted)}")
+    ops.append(f"Pré-Churn em risco: {len(t_risk_sorted)}")
 
     # ── f) Recuperações ───────────────────────────────────────────────────
-    plan_rec1 = _MockPlan({**month_filter, "from_status": "Pré-churn", "to_status": "Ativo"})
+    plan_rec1 = _MockPlan({**month_filter, "from_status": "Pré-Churn", "to_status": "Ativo"})
     s_rec1, t_rec1, _ = _calc_status_transitions(plan_rec1, vendas_gest, produtores)
 
     plan_rec2 = _MockPlan({**month_filter, "from_status": "Churn", "to_status": "Ativo"})
@@ -3485,8 +3485,8 @@ def _calc_manager_report(
         {"secao": "Top 5 Maiores Produtores (12m)", "dados": clusters_section["top5_valor_12m"]},
         {"secao": "Churns Novos — Taxa Histórica 12m", "dados": churns_section["taxa_historico_12m"]},
         {"secao": "Churns Novos — Top 5 por Valor", "dados": churns_top5},
-        {"secao": "Pré-churn em Risco", "dados": prechurn_section["lista"]},
-        {"secao": "Recuperações — Pré-churn → Ativo", "dados": recuperacoes_section["prechurn_para_ativo"]["lista"]},
+        {"secao": "Pré-Churn em Risco", "dados": prechurn_section["lista"]},
+        {"secao": "Recuperações — Pré-Churn → Ativo", "dados": recuperacoes_section["prechurn_para_ativo"]["lista"]},
         {"secao": "Recuperações — Churn → Ativo", "dados": recuperacoes_section["churn_para_ativo"]["lista"]},
     ]
 

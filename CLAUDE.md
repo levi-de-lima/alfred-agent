@@ -103,7 +103,7 @@ mês corrente, com `Status` calculado por forward-fill da última venda.
 | `Produtor` | str | Card 189 + 194 |
 | `Data` | datetime | Início do mês — todos os meses do grid |
 | `Valor` | float64 | Card 189 (0 se sem venda no mês) |
-| `Status` | str | Calculado: `Ativo / Pré-churn / Churn / Inativo` |
+| `Status` | str | Calculado: `Ativo / Pré-Churn / Churn / Inativo` |
 | `Status_Anterior` | str ou NaN | `Status.shift(1)` por produtor — NaN no primeiro registro |
 
 **Cálculo de Status** (no fim de cada mês do grid):
@@ -112,7 +112,7 @@ mês corrente, com `Status` calculado por forward-fill da última venda.
 |---|---|
 | produtor nunca teve venda | Inativo |
 | dias desde última venda ≤ 61 | Ativo |
-| 61 < dias ≤ 121 | Pré-churn |
+| 61 < dias ≤ 121 | Pré-Churn |
 | dias > 121 | Churn |
 
 ### dProdutores — construída em `importers/metabase._build_dprodutores()`
@@ -169,9 +169,9 @@ Pipeline detalhado em [HUBSPOT_IMPORT.md](HUBSPOT_IMPORT.md) e
 - **Inativo ≠ Churn.** Inativo nunca vendeu; Churn vendeu e parou.
 - **Status é estado de fim de mês.** Máximo uma mudança por produtor por mês.
 - **`Status_Anterior` nulo = primeiro registro do produtor**, não dado faltante.
-- **Reativação leve vs. plena.** Pré-churn → Ativo é leve; Churn → Ativo é plena.
+- **Reativação leve vs. plena.** Pré-Churn → Ativo é leve; Churn → Ativo é plena.
   São métricas distintas — não somar.
-- **Taxa de churn TMB** = `Pré-churn→Churn / base (Ativo + Pré-churn)`.
+- **Taxa de churn TMB** = `Pré-Churn→Churn / base (Ativo + Pré-Churn)`.
   Meta: **5%**. **Exclui** produtores gerenciados por **TMB Educação**.
 - **Filtro temporal obrigatório.** Quando a pergunta especifica um período,
   filtrar `Data` pelo mês/ano exatos; nunca cair no mês mais recente por padrão.

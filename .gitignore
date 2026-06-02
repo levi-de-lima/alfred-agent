@@ -12,6 +12,7 @@ data/**
 !data/hubspot/.gitkeep
 !data/metabase/
 !data/metabase/.gitkeep
+# Explorer integrado ao Alfred — sem arquivos extras em data/
 logs/
 
 # Lixo / arquivos legados a serem removidos manualmente

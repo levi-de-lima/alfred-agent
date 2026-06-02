@@ -29,7 +29,7 @@ _REGRAS_DESCRICAO: dict[str, str] = {
     "inativo_nao_e_churn": "Inativo ≠ Churn: Inativo nunca vendeu; Churn vendeu e parou.",
     "status_fim_do_mes": "Status é o estado no fim do mês — máximo uma mudança por mês por produtor.",
     "status_anterior_nulo_e_primeiro_registro": "Status_Anterior nulo = primeiro registro do produtor, não dado faltante.",
-    "reativacao_leve_vs_plena": "Pré-churn→Ativo é reativação leve; Churn→Ativo é reativação plena — são métricas diferentes.",
+    "reativacao_leve_vs_plena": "Pré-Churn→Ativo é reativação leve; Churn→Ativo é reativação plena — são métricas diferentes.",
     "taxa_churn_exclui_tmb_educacao": "Taxa de churn EXCLUI produtores gerenciados por TMB Educação.",
     "filtro_temporal_obrigatorio": "O período foi especificado na pergunta — NÃO use a data de referência padrão.",
 }

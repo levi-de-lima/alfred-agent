@@ -295,7 +295,7 @@ CLAUDE_TOOLS: list[dict] = [
     {
         "name": "taxa_churn",
         "description": (
-            "Taxa de churn TMB (Pré-churn→Churn / base Ativo+Pré-churn). Exclui TMB Educação. "
+            "Taxa de churn TMB (Pré-Churn→Churn / base Ativo+Pré-Churn). Exclui TMB Educação. "
             "Modo pontual: taxa de um mês. Modo série (serie=True): histórico de N meses (padrão 6). "
             "Use para: 'qual a taxa de churn?', 'histórico de churn', 'tendência', 'por gestor'. "
             "Para diagnóstico de streak (gestores consecutivos acima da meta), use churn_streak."
@@ -315,17 +315,17 @@ CLAUDE_TOOLS: list[dict] = [
         "name": "transicoes",
         "description": (
             "Produtores que mudaram de status em um período. "
-            "Churns novos: from_status='Pré-churn', to_status='Churn'. "
-            "Recuperações: to_status='Ativo' (de Pré-churn ou Churn). "
-            "Entradas em risco: to_status='Pré-churn'. "
+            "Churns novos: from_status='Pré-Churn', to_status='Churn'. "
+            "Recuperações: to_status='Ativo' (de Pré-Churn ou Churn). "
+            "Entradas em risco: to_status='Pré-Churn'. "
             "Use para: 'quem churnou?', 'quem se recuperou?', 'quem entrou em pré-churn?', "
             "'transições do gestor X'."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "from_status":   {"type": "string",  "description": "Status de origem (ex: 'Pré-churn', 'Ativo', 'Churn')"},
-                "to_status":     {"type": "string",  "description": "Status de destino (ex: 'Churn', 'Ativo', 'Pré-churn')"},
+                "from_status":   {"type": "string",  "description": "Status de origem (ex: 'Pré-Churn', 'Ativo', 'Churn')"},
+                "to_status":     {"type": "string",  "description": "Status de destino (ex: 'Churn', 'Ativo', 'Pré-Churn')"},
                 "gestor":        {"type": "string",  "description": "Filtrar por gestor (opcional)"},
                 "cluster":       {"type": "string",  "description": "Filtrar por cluster (opcional)"},
                 "periodo":       {"type": "string",  "description": _PERIODO_DESC},
@@ -340,14 +340,14 @@ CLAUDE_TOOLS: list[dict] = [
             "Lista ou detalhe de produtores. "
             "Com 'produtor=X': histórico individual (status mês a mês, faturamento, gestor, cluster). "
             "Com 'status=[...]': lista de produtores naquele status, ordenados e limitados. "
-            "Use para: 'como está o produtor X?', 'quem está em Pré-churn?', "
+            "Use para: 'como está o produtor X?', 'quem está em Pré-Churn?', "
             "'top 10 em risco por valor', 'detalhes do produtor Y'."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "produtor": {"type": "string", "description": "Nome do produtor para detalhe individual (busca parcial)"},
-                "status":   {"type": "array", "items": {"type": "string"}, "description": "Lista de status a filtrar, ex: ['Pré-churn','Churn']"},
+                "status":   {"type": "array", "items": {"type": "string"}, "description": "Lista de status a filtrar, ex: ['Pré-Churn','Churn']"},
                 "gestor":   {"type": "string", "description": "Filtrar por gestor (opcional)"},
                 "cluster":  {"type": "string", "description": "Filtrar por cluster (opcional)"},
                 "periodo":  {"type": "string", "description": _PERIODO_DESC},
@@ -360,7 +360,7 @@ CLAUDE_TOOLS: list[dict] = [
         "name": "faturamento",
         "description": (
             "Análise financeira por dimensão (gestor, cluster, produtor). "
-            "Com status=['Churn','Pré-churn']: impacto financeiro do churn. "
+            "Com status=['Churn','Pré-Churn']: impacto financeiro do churn. "
             "Use para: 'faturamento por gestor', 'top produtores por receita', "
             "'quanto vale a carteira?', 'impacto financeiro do churn', 'valor em risco'."
         ),
@@ -370,7 +370,7 @@ CLAUDE_TOOLS: list[dict] = [
                 "gestor":   {"type": "string", "description": "Filtrar por gestor (opcional)"},
                 "cluster":  {"type": "string", "description": "Filtrar por cluster (opcional)"},
                 "produtor": {"type": "string", "description": "Filtrar por produtor específico (opcional)"},
-                "status":   {"type": "array", "items": {"type": "string"}, "description": "Filtrar por lista de status, ex: ['Churn','Pré-churn']"},
+                "status":   {"type": "array", "items": {"type": "string"}, "description": "Filtrar por lista de status, ex: ['Churn','Pré-Churn']"},
                 "periodo":  {"type": "string", "description": _PERIODO_DESC},
                 "group_by": {"type": "string", "description": "Agrupar por: 'Gestor', 'Cluster', 'Produtor', ou omitir para total"},
                 "top_n":    {"type": "integer", "description": "Limitar ranking de produtores (padrão 10)"},

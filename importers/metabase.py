@@ -9,8 +9,8 @@ Interface pública:
     load_data(force_refresh=False) -> DataPayload
 """
 
-import glob
 import io
+import shutil
 import time
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -42,7 +42,7 @@ class DataUnavailableError(Exception):
 # Tipos de retorno
 # ---------------------------------------------------------------------------
 
-VALID_STATUSES = {"Ativo", "Pré-churn", "Churn", "Inativo"}
+VALID_STATUSES = {"Ativo", "Pré-Churn", "Churn", "Inativo"}
 
 
 @dataclass
@@ -56,55 +56,45 @@ class DataPayload:
 
 
 # ---------------------------------------------------------------------------
-# Cache (parquet)
+# Cache (parquet) — nomes fixos: main + backup
 # ---------------------------------------------------------------------------
 
-def _cache_pattern() -> str:
-    return str(settings.cache_dir / "tmb_churn_cache_*_vendas.parquet")
+def _main_vendas()  -> Path: return settings.cache_dir / "fvendas.parquet"
+def _main_prod()    -> Path: return settings.cache_dir / "dprodutores.parquet"
+def _bck_vendas()   -> Path: return settings.cache_dir / "fvendas_backup.parquet"
+def _bck_prod()     -> Path: return settings.cache_dir / "dprodutores_backup.parquet"
 
 
-def _latest_cache_file() -> Path | None:
-    files = sorted(glob.glob(_cache_pattern()))
-    return Path(files[-1]) if files else None
+def _main_cache_complete() -> bool:
+    return _main_vendas().exists() and _main_prod().exists()
 
 
-def _is_cache_valid(cache_file: Path) -> bool:
-    age_seconds = time.time() - cache_file.stat().st_mtime
+def _backup_cache_complete() -> bool:
+    return _bck_vendas().exists() and _bck_prod().exists()
+
+
+def _is_cache_valid() -> bool:
+    if not _main_cache_complete():
+        return False
+    age_seconds = time.time() - _main_vendas().stat().st_mtime
     return age_seconds < settings.cache_max_age_hours * 3600
 
 
-def _cache_stem() -> str:
-    return f"tmb_churn_cache_{datetime.utcnow().strftime('%Y%m%d_%H%M')}"
+def _save_to_cache(vendas: pd.DataFrame, produtores: pd.DataFrame) -> None:
+    if _main_cache_complete():
+        shutil.copy2(_main_vendas(), _bck_vendas())
+        shutil.copy2(_main_prod(), _bck_prod())
+    vendas.to_parquet(_main_vendas(), index=False)
+    produtores.to_parquet(_main_prod(), index=False)
+    logger.info("Cache | salvo: fvendas.parquet + dprodutores.parquet")
 
 
-def _evict_old_cache(keep: int = 3) -> None:
-    files = sorted(glob.glob(_cache_pattern()))
-    for old in files[:-keep]:
-        try:
-            stem = Path(old).name.replace("_vendas.parquet", "")
-            Path(old).unlink()
-            prod = Path(old).parent / f"{stem}_produtores.parquet"
-            prod.unlink(missing_ok=True)
-            logger.debug(f"Cache evictado: {old}")
-        except OSError:
-            pass
+def _load_main() -> tuple[pd.DataFrame, pd.DataFrame]:
+    return pd.read_parquet(_main_vendas()), pd.read_parquet(_main_prod())
 
 
-def _save_to_cache(vendas: pd.DataFrame, produtores: pd.DataFrame) -> Path:
-    stem = _cache_stem()
-    v_path = settings.cache_dir / f"{stem}_vendas.parquet"
-    p_path = settings.cache_dir / f"{stem}_produtores.parquet"
-    vendas.to_parquet(v_path, index=False)
-    produtores.to_parquet(p_path, index=False)
-    _evict_old_cache()
-    logger.info(f"Cache | salvo: {v_path.name}")
-    return v_path
-
-
-def _load_from_cache(cache_file: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
-    stem = cache_file.name.replace("_vendas.parquet", "")
-    prod_file = cache_file.parent / f"{stem}_produtores.parquet"
-    return pd.read_parquet(cache_file), pd.read_parquet(prod_file)
+def _load_backup() -> tuple[pd.DataFrame, pd.DataFrame]:
+    return pd.read_parquet(_bck_vendas()), pd.read_parquet(_bck_prod())
 
 
 # ---------------------------------------------------------------------------
@@ -166,18 +156,18 @@ def _fetch_card_csv(token: str, card_id: int) -> pd.DataFrame:
 #
 # Colunas esperadas do card 189:
 #   Produtor ID, Status, Produtor, CNPJ, Gestor, Cluster,
-#   Data: Mês, Soma de Valor Principal, Máximo de Efetivado em: Dia
+#   Data: Mês, Soma de Valor Principal, Mínimo de Efetivado em: Dia
 #
 # O card tem apenas meses COM VENDAS (sem linhas de valor=0).
 # Geramos o grid completo (todos produtores × todos meses) e calculamos
-# o Status histórico correto a partir de "Máximo de Efetivado em: Dia".
+# o Status histórico correto a partir de "Mínimo de Efetivado em: Dia".
 
 _COL_MAP_189 = {
     "Produtor ID":                   "produtor_id",
     "Produtor":                      "produtor_nome",
     "Data: Mês":                     "mes",
     "Soma de Valor Principal":       "valor",
-    "Máximo de Efetivado em: Dia":   "ultima_venda_no_mes",
+    "Mínimo de Efetivado em: Dia":   "ultima_venda_no_mes",
 }
 
 CLUSTER_MAP = {
@@ -285,8 +275,27 @@ def _build_fvendas(df_raw: pd.DataFrame, df_194: pd.DataFrame) -> pd.DataFrame:
     grid["Status"] = "Inativo"
     grid.loc[has_venda & (grid["dias_sem_venda"] <= 61),  "Status"] = "Ativo"
     grid.loc[has_venda & (grid["dias_sem_venda"] >  61)
-                       & (grid["dias_sem_venda"] <= 121), "Status"] = "Pré-churn"
+                       & (grid["dias_sem_venda"] <= 121), "Status"] = "Pré-Churn"
     grid.loc[has_venda & (grid["dias_sem_venda"] > 121),  "Status"] = "Churn"
+
+    # --- Meses anteriores à data de parceria → Status nulo ---
+    parc_col_raw = next((c for c in df_194.columns if "Parceria" in c), None)
+    if parc_col_raw:
+        dp_parc = df_194[[cod_col, parc_col_raw]].copy()
+        dp_parc["produtor_id"] = pd.to_numeric(dp_parc[cod_col], errors="coerce")
+        dp_parc = dp_parc.dropna(subset=["produtor_id"])
+        dp_parc["produtor_id"] = dp_parc["produtor_id"].astype("int64")
+        dp_parc["data_parceria"] = (
+            pd.to_datetime(dp_parc[parc_col_raw], errors="coerce", format="ISO8601")
+            .dt.to_period("M").dt.to_timestamp()
+        )
+        dp_parc = dp_parc[["produtor_id", "data_parceria"]].drop_duplicates("produtor_id")
+        patch_map = {pid: ts.to_period("M").to_timestamp() for pid, ts in _DATA_PARCERIA_PATCH.items()}
+        null_mask = dp_parc["data_parceria"].isna()
+        dp_parc.loc[null_mask, "data_parceria"] = dp_parc.loc[null_mask, "produtor_id"].map(patch_map)
+        grid = grid.merge(dp_parc, on="produtor_id", how="left")
+        grid.loc[grid["data_parceria"].notna() & (grid["mes"] < grid["data_parceria"]), "Status"] = None
+        grid = grid.drop(columns=["data_parceria"])
 
     # --- Status_Anterior ---
     grid["Status_Anterior"] = grid.groupby("produtor_id")["Status"].shift(1)
@@ -317,10 +326,23 @@ def _build_fvendas(df_raw: pd.DataFrame, df_194: pd.DataFrame) -> pd.DataFrame:
 # Data 1ª Venda: calculada a partir do card 189 (min ultima_venda_no_mes por produtor).
 
 _COL_MAP_194 = {
-    "Código":   "Código",
-    "Produtor": "Produtor",
-    "Gestor":   "Gestor",
-    "Cluster":  "Cluster",
+    "Código":        "Código",
+    "Produtor":      "Produtor",
+    "Gestor":        "Gestor",
+    "Cluster":       "Cluster",
+    "Data Parceria": "Data Parceria",
+}
+
+# Datas de parceria ausentes no Metabase — preenchidas manualmente.
+# Código 665 (Denis Ursulino) intencionalmente omitido.
+_DATA_PARCERIA_PATCH: dict[int, pd.Timestamp] = {
+    1:  pd.Timestamp("2023-01-11"),  # TMB Educação
+    2:  pd.Timestamp("2022-01-31"),  # O Corpo Explica - 2023
+    4:  pd.Timestamp("2023-01-01"),  # INTERUP
+    43: pd.Timestamp("2023-01-01"),  # Aline Salvi
+    51: pd.Timestamp("2022-05-02"),  # Danielle Furtado
+    54: pd.Timestamp("2022-05-16"),  # Metaforando
+    55: pd.Timestamp("2022-08-09"),  # André Lima
 }
 
 
@@ -351,7 +373,7 @@ def _build_dprodutores(df_194: pd.DataFrame, df_189: pd.DataFrame) -> pd.DataFra
     )
 
     # Data 1ª Venda — min da última venda registrada no mês mais antigo do produtor
-    col_uv = "Máximo de Efetivado em: Dia"
+    col_uv = "Mínimo de Efetivado em: Dia"
     if col_uv in df_189.columns:
         primeira = (
             df_189[["Produtor ID", col_uv]]
@@ -365,7 +387,10 @@ def _build_dprodutores(df_194: pd.DataFrame, df_189: pd.DataFrame) -> pd.DataFra
     else:
         dp["Data 1ª Venda"] = pd.NaT
 
-    dp["Data Parceria"] = pd.NaT
+    dp["Data Parceria"] = pd.to_datetime(dp["Data Parceria"], errors="coerce", format="ISO8601").dt.normalize()
+
+    patch_mask = dp["Código"].isin(_DATA_PARCERIA_PATCH) & dp["Data Parceria"].isna()
+    dp.loc[patch_mask, "Data Parceria"] = dp.loc[patch_mask, "Código"].map(_DATA_PARCERIA_PATCH)
 
     dp = dp[["Código", "Produtor", "Cluster", "Gestor", "Data Parceria", "Data 1ª Venda"]]
     dp = dp.drop_duplicates(subset="Código").reset_index(drop=True)
@@ -381,20 +406,19 @@ def _build_dprodutores(df_194: pd.DataFrame, df_189: pd.DataFrame) -> pd.DataFra
 def load_data(force_refresh: bool = False) -> DataPayload:
     """
     Carrega fVendas e dProdutores. Fluxo:
-      1. Cache válido (e não force_refresh) → usa cache parquet
-      2. Consulta Metabase (cards 189 e 194) → constrói DataFrames, salva cache
-      3. Metabase falhou → fallback para cache expirado
-      4. Sem cache algum → DataUnavailableError
+      1. Cache main válido (e não force_refresh) → usa fvendas.parquet + dprodutores.parquet
+      2. Consulta Metabase (cards 189 e 194) → constrói DataFrames, promove main→backup, salva main
+      3. Metabase falhou → tenta main expirado → tenta backup → DataUnavailableError
     """
-    cache_file = _latest_cache_file()
-
-    # --- Caminho 1: cache válido ---
-    if not force_refresh and cache_file and _is_cache_valid(cache_file):
-        logger.info(f"Cache | usando cache válido: {cache_file.name}")
+    # --- Caminho 1: cache main válido ---
+    if not force_refresh and _is_cache_valid():
+        logger.info("Cache | usando cache válido: fvendas.parquet + dprodutores.parquet")
         try:
-            return _build_payload_from_cache(cache_file)
+            vendas, produtores = _load_main()
+            return _make_payload(vendas, produtores, source="cache",
+                                 cache_file_path=str(_main_vendas()))
         except Exception as exc:
-            logger.warning(f"Cache | arquivo inválido ({exc}), regenerando via Metabase")
+            logger.warning(f"Cache | main inválido ({exc}), regenerando via Metabase")
 
     # --- Caminho 2: Metabase ---
     try:
@@ -410,31 +434,36 @@ def load_data(force_refresh: bool = False) -> DataPayload:
         produtores = _build_dprodutores(df_194, df_189)
 
         try:
-            cache_path = _save_to_cache(vendas, produtores)
+            _save_to_cache(vendas, produtores)
         except Exception as save_exc:
             logger.warning(f"Cache | falha ao salvar (não fatal): {save_exc}")
-            cache_path = None
-        return _make_payload(
-            vendas, produtores,
-            source="metabase",
-            cache_file_path=str(cache_path) if cache_path else "",
-        )
+        return _make_payload(vendas, produtores, source="metabase",
+                             cache_file_path=str(_main_vendas()))
 
     except MetabaseError as exc:
         logger.warning(f"Metabase | falha: {exc}")
-        if cache_file:
-            logger.warning(f"Cache | usando cache expirado como fallback: {cache_file.name}")
-            return _build_payload_from_cache(cache_file)
+        # Fallback 1: main expirado
+        if _main_cache_complete():
+            logger.warning("Cache | usando main expirado como fallback")
+            try:
+                vendas, produtores = _load_main()
+                return _make_payload(vendas, produtores, source="cache",
+                                     cache_file_path=str(_main_vendas()))
+            except Exception as load_exc:
+                logger.warning(f"Cache | main ilegível ({load_exc}), tentando backup")
+        # Fallback 2: backup
+        if _backup_cache_complete():
+            logger.warning("Cache | usando backup como fallback")
+            try:
+                vendas, produtores = _load_backup()
+                return _make_payload(vendas, produtores, source="cache",
+                                     cache_file_path=str(_bck_vendas()))
+            except Exception as bck_exc:
+                logger.warning(f"Cache | backup ilegível ({bck_exc})")
         raise DataUnavailableError(
             "Metabase inacessível e sem cache local disponível.\n"
             "Verifique METABASE_URL, METABASE_USER e METABASE_PASSWORD no .env"
         ) from exc
-
-
-def _build_payload_from_cache(cache_file: Path) -> DataPayload:
-    vendas, produtores = _load_from_cache(cache_file)
-    return _make_payload(vendas, produtores, source="cache", cache_file_path=str(cache_file))
-
 
 def _make_payload(
     vendas: pd.DataFrame,

@@ -537,10 +537,10 @@ def _render_summary_card_legacy(result: AnalyticsResult) -> str:
         f'    <div style="font-size:12px; font-weight:400; color:var(--text-secondary); margin-top:4px;">'
         f'{_fmt(pct_ativo, 1)}% da base</div>\n'
         '  </div>\n'
-        # Pré-churn
+        # Pré-Churn
         '  <div style="background:var(--surface-alt); border:1px solid var(--border); border-radius:12px; padding:16px;">\n'
         '    <div style="font-size:11px; font-weight:600; color:var(--text-secondary); text-transform:uppercase; '
-        'letter-spacing:0.5px; margin-bottom:8px;">Pré-churn</div>\n'
+        'letter-spacing:0.5px; margin-bottom:8px;">Pré-Churn</div>\n'
         f'    <div class="kpi-value" style="font-size:clamp(14px,3vw,32px); font-weight:700; color:var(--warning);">{n_prechurn}</div>\n'
         f'    <div style="font-size:12px; font-weight:400; color:var(--text-secondary); margin-top:4px;">'
         f'{_fmt(pct_prechurn, 1)}% da base</div>\n'
