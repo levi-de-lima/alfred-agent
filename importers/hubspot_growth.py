@@ -25,8 +25,10 @@ import requests
 HUBSPOT_TOKEN = os.getenv("HUBSPOT_TOKEN", "")
 HUBSPOT_BASE_URL = "https://api.hubapi.com"
 PIPELINE_CLOSER_ID = "832504973"
-OUTPUT_PATH = Path("data/hubspot/hs_growth_leads.parquet")
-CACHE_ASSOC_PATH = Path("data/hubspot/associations_cache.json")
+
+from config import DATA_HUB  # noqa: E402
+OUTPUT_PATH      = DATA_HUB / "hubspot" / "hs_growth_leads.parquet"
+CACHE_ASSOC_PATH = DATA_HUB / "hubspot" / "associations_cache.json"
 
 # Pipelines
 PIPELINES = {

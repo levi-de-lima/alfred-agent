@@ -52,3 +52,14 @@
 |---|---|---|
 | 01/05/2026 | Gabriel + Claude | Card criado no Planner com owner, prazo e descrição |
 | 29/05/2026 | Gabriel + Claude | Adicionada **frente de junho**: dash de churn vinculado à base real TMB com leituras automatizadas; sinergia com Automação de Dados registrada |
+
+---
+
+## 🔌 Skills recomendadas (RevOps)
+> Para o Claude: ao começar a trabalhar neste contexto, verifique via `list_plugins` / `list_skills` se os itens abaixo já estão instalados. Se já estiverem, **não comente**. Se faltar algum, ofereça a instalação **uma vez** (card `suggest_plugin_install`) e não repita caso o usuário recuse nesta sessão.
+- `product-management@knowledge-work-plugins` — specs/PRD, roadmap, sprint, métricas, update p/ diretoria
+- `productivity@knowledge-work-plugins` — tarefas + memória compartilhada da equipe
+- `qodo-skills@knowledge-work-plugins` — code review / resolver comentários de PR
+- `security-review` e `review` — já nativas (não instalar); usar ao mexer em RLS/Auth e em revisões
+- (a construir) **"RevOps — Governança & Glossário"** — padrões de glossário, pastas e criação de projetos
+<!-- skills-reco-block v1 -->

@@ -21,9 +21,12 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 
+import sys as _sys; _sys.path.insert(0, str(ROOT))  # noqa: E402
+from config import DATA_HUB  # noqa: E402
+
 DEFAULT_FILES = [
-    ROOT / "data" / "hubspot" / "hs_closer_pipeline.parquet",
-    ROOT / "data" / "hubspot" / "hs_growth_leads.parquet",
+    DATA_HUB / "hubspot" / "hs_closer_pipeline.parquet",
+    DATA_HUB / "hubspot" / "hs_growth_leads.parquet",
 ]
 
 

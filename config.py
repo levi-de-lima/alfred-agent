@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 _BASE_DIR = Path(__file__).parent.resolve()
+DATA_HUB = _BASE_DIR.parent / "Data_Hub"
 
 
 def _require(key: str) -> str:
@@ -43,7 +44,7 @@ class Settings:
     metabase_user: str
     metabase_password: str
 
-    # Cache (parquets do Metabase em data/metabase/)
+    # Cache (parquets do Metabase em Data_Hub/metabase/)
     cache_dir: Path
     cache_max_age_hours: int
 
@@ -95,7 +96,7 @@ def _load_settings() -> Settings:
         metabase_url=_optional("METABASE_URL", ""),
         metabase_user=_optional("METABASE_USER", ""),
         metabase_password=_optional("METABASE_PASSWORD", ""),
-        cache_dir=Path(_optional("CACHE_DIR", str(_BASE_DIR / "data" / "metabase"))),
+        cache_dir=Path(_optional("CACHE_DIR", str(DATA_HUB / "metabase"))),
         cache_max_age_hours=int(_optional("CACHE_MAX_AGE_HOURS", "4")),
         log_dir=Path(_optional("LOG_DIR", str(_BASE_DIR / "logs"))),
         log_level=_optional("LOG_LEVEL", "INFO"),

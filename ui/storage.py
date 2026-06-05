@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
-_DB_PATH = _ROOT / "data" / "chats.db"
+from config import DATA_HUB as _DATA_HUB  # noqa: E402
+_DB_PATH = _DATA_HUB / "chats.db"
 _MAX_TURNS = 5
 _MAX_RESPONSE_CHARS = 600
 

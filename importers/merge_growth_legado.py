@@ -45,9 +45,10 @@ from pathlib import Path
 
 import pandas as pd
 
-HS_PATH  = Path("data/hubspot/hs_growth_leads.parquet")
-PDV_PATH = Path("data/Base Legado Growth.xlsx")
-OUT_PATH = Path("data/hubspot/hs_growth_leads.parquet")
+from config import DATA_HUB
+HS_PATH  = DATA_HUB / "hubspot" / "hs_growth_leads.parquet"
+PDV_PATH = DATA_HUB / "Base Legado Growth.xlsx"
+OUT_PATH = DATA_HUB / "hubspot" / "hs_growth_leads.parquet"
 
 # Data a partir da qual o HubSpot passou a ser a fonte oficial de novos
 # leads. Linhas do Pipedrive com `dt_criacao >= este corte` ficam fora

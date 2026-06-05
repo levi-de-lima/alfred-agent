@@ -12,11 +12,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import settings
+from config import settings, DATA_HUB
 from importers.metabase import DataNormalizationError, DataUnavailableError, load_data
 
-_HS_CLOSER_PARQUET = Path("data/hubspot/hs_closer_pipeline.parquet")
-_HS_GROWTH_PARQUET = Path("data/hubspot/hs_growth_leads.parquet")
+_HS_CLOSER_PARQUET = DATA_HUB / "hubspot" / "hs_closer_pipeline.parquet"
+_HS_GROWTH_PARQUET = DATA_HUB / "hubspot" / "hs_growth_leads.parquet"
 
 logger = settings.logger
 
