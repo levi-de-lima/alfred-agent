@@ -489,3 +489,29 @@ def _make_payload(
         cache_file_path=cache_file_path,
         data_reference_date=data_reference_date,
     )
+
+
+if __name__ == "__main__":
+    # Atualiza os parquets do Metabase (fvendas + dprodutores) em Data_Hub/metabase/.
+    #   python -m importers.metabase            → força refresh via Metabase
+    #   python -m importers.metabase --no-force → respeita o cache (TTL)
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Atualiza fvendas.parquet e dprodutores.parquet a partir do Metabase."
+    )
+    parser.add_argument(
+        "--no-force",
+        action="store_true",
+        help="Respeita o cache válido (TTL) em vez de forçar a busca no Metabase.",
+    )
+    args = parser.parse_args()
+
+    payload = load_data(force_refresh=not args.no_force)
+    print(
+        f"[Metabase] source={payload.source} | "
+        f"vendas={len(payload.vendas)} linhas | "
+        f"produtores={len(payload.produtores)} linhas | "
+        f"data_ref={payload.data_reference_date}"
+    )
+    print(f"[Metabase] parquets atualizados em {payload.cache_file_path}")

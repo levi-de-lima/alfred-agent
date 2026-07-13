@@ -1,0 +1,681 @@
+<title>Churn — Visão Estratégica | TMB</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --navy:#092745;--cyan:#00bbff;--blue:#3574ff;--grey:#e3e2e0;
+  --bg:#04121f;--surface:#0a2135;--surface2:#0e2b44;--surface3:#10344f;--line:rgba(255,255,255,.09);
+  --ink:#f4f8fc;--ink2:#a9c0d4;--muted:#6f8aa3;
+  --com:#00bbff;--sem:#ff7a59;
+  --crit:#e5484d;--warn:#f5b53d;--good:#3fcf8e;
+  --cl-ene:#9ec5f4;--cl-pal:#5598e7;--cl-tit:#2f6fd0;--cl-rho:#12539e;
+  --fin:#f5b53d;--radius:14px;--shadow:0 1px 0 rgba(255,255,255,.03),0 10px 34px rgba(0,0,0,.38);
+  --st-a:#3fcf8e;--st-p:#f5b53d;--st-c:#e5484d;--rel:#e87ba4;
+  --font:'Inter','Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
+}
+:root[data-theme="light"]{
+  --bg:#eef2f6;--surface:#ffffff;--surface2:#f4f7fb;--surface3:#eaf0f6;--line:rgba(9,39,69,.12);
+  --ink:#092745;--ink2:#3d5570;--muted:#6f8aa3;--shadow:0 1px 0 rgba(9,39,69,.03),0 10px 28px rgba(9,39,69,.10);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1360px;margin:0 auto;padding:0 20px 90px}
+h1,h2,h3{margin:0;font-weight:700;text-wrap:balance}
+.tnum{font-variant-numeric:tabular-nums}
+button{font-family:inherit}
+header{position:sticky;top:0;z-index:60;background:linear-gradient(180deg,var(--bg) 78%,rgba(4,18,31,0));backdrop-filter:blur(8px)}
+.hdr{display:flex;align-items:center;gap:18px;max-width:1360px;margin:0 auto;padding:15px 20px 10px}
+.hdr img.logo{height:30px;flex:none}
+.hdr .ttl{flex:1;min-width:0}.hdr .ttl h1{font-size:20px;letter-spacing:-.2px}
+.hdr .ttl p{margin:2px 0 0;color:var(--ink2);font-size:12px}
+.tgl{border:1px solid var(--line);background:var(--surface);color:var(--ink2);border-radius:10px;padding:7px 11px;cursor:pointer;font-size:13px}
+.tgl:hover{color:var(--ink)}
+.fbar{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);margin:6px 0 20px;overflow:hidden}
+.frow{display:flex;flex-wrap:wrap;align-items:flex-start;gap:16px 20px;padding:14px 18px}
+.frow+.frow{border-top:1px solid var(--line)}
+.fgroup{display:inline-flex;align-items:center;gap:9px;flex-wrap:nowrap}
+.fseg{display:inline-flex;background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
+.fseg button{border:0;background:transparent;color:var(--ink2);padding:7px 13px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap}
+.fseg button[aria-pressed="true"]{background:var(--cyan);color:#03293b;font-weight:700}
+.fseg.sem button[aria-pressed="true"]{background:var(--sem);color:#3a1405}
+.fseg.lens button[aria-pressed="true"]{background:var(--fin);color:#3a2b02}
+.fseg.stt button[aria-pressed="true"]{background:var(--st-c);color:#fff}
+.flab{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);font-weight:700;white-space:nowrap}
+.fchips{display:inline-flex;flex-wrap:wrap;gap:6px}
+.fchip{border:1px solid var(--line);background:transparent;color:var(--ink2);border-radius:19px;padding:5px 12px;cursor:pointer;font-size:12.5px;transition:.12s;white-space:nowrap}
+.fchip:hover{border-color:var(--cyan);color:var(--ink)}
+.fchip[aria-pressed="true"]{background:var(--surface3);border-color:var(--cyan);color:var(--ink);font-weight:600}
+select{background:var(--surface2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-family:inherit;font-size:13px;max-width:200px}
+.spacer{flex:1 1 40px}
+.drawer-btn{background:var(--cyan);color:#03293b;border:0;border-radius:11px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:13px}
+.drawer-btn:hover{filter:brightness(1.08)}
+.reset-btn{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:8px 13px;cursor:pointer;font-size:12.5px}
+.reset-btn:hover{color:var(--ink);border-color:var(--ink2)}
+.active-note{font-size:12px;color:var(--ink2)}.active-note b{color:var(--cyan)}
+.grid{display:grid;gap:16px}.kpis{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.cols2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols3{grid-template-columns:1.25fr minmax(0,1fr)}
+.fin3{display:grid;gap:12px;grid-template-columns:repeat(3,minmax(0,1fr))}@media(max-width:820px){.fin3{grid-template-columns:1fr}}
+@media(max-width:980px){.kpis{grid-template-columns:repeat(2,1fr)}.cols2,.cols3{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);position:relative}
+.card h2{font-size:14px;letter-spacing:.2px;display:flex;align-items:center;gap:7px}
+.card .sub{color:var(--muted);font-size:11.5px;margin:3px 0 12px}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.kpi .lbl{color:var(--ink2);font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px}
+.kpi .val{font-size:29px;font-weight:800;letter-spacing:-.6px;margin-top:7px;line-height:1}
+.kpi .delta{font-size:11.5px;color:var(--muted);margin-top:7px}
+.accent-cyan{color:var(--cyan)}.accent-sem{color:var(--sem)}.accent-fin{color:var(--fin)}.accent-good{color:var(--good)}
+.info{width:15px;height:15px;border-radius:50%;border:1px solid var(--muted);color:var(--muted);font-size:10px;display:inline-flex;align-items:center;justify-content:center;cursor:help;font-weight:700;flex:none}
+.info:hover,.info:focus{border-color:var(--cyan);color:var(--cyan);outline:none}
+.hbar{display:grid;grid-template-columns:minmax(150px,235px) 1fr auto;align-items:center;gap:10px;margin:7px 0;cursor:pointer}
+.hbar:hover .name{color:var(--ink)}
+.hbar .name{font-size:12.5px;color:var(--ink2);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hbar .track{background:rgba(255,255,255,.05);border-radius:6px;height:16px;overflow:hidden}
+:root[data-theme="light"] .hbar .track{background:rgba(9,39,69,.06)}
+.hbar .fill{height:100%;border-radius:6px;min-width:2px;transition:width .4s}
+.hbar .num{font-size:12.5px;color:var(--ink);font-weight:600;min-width:46px;text-align:right}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin:2px 0 12px}
+.legend span{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2)}.legend i{width:11px;height:11px;border-radius:3px}
+.block-comp{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.bc{border:1px solid var(--line);border-radius:12px;padding:15px;background:var(--surface2);cursor:pointer}.bc:hover{border-color:var(--cyan)}
+.bc h3{font-size:13px;display:flex;align-items:center;gap:8px}.bc .big{font-size:34px;font-weight:800;letter-spacing:-1px;margin:8px 0 2px}
+.bc .meta{font-size:12px;color:var(--ink2)}.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.toolbtn{border:1px solid var(--line);background:var(--surface2);color:var(--ink2);border-radius:8px;padding:4px 10px;font-size:11.5px;cursor:pointer}
+.toolbtn[aria-pressed="true"]{background:var(--cyan);color:#03293b;border-color:var(--cyan);font-weight:600}
+.chart-tools{display:flex;gap:6px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:right;padding:8px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;white-space:nowrap}
+th.sorted{color:var(--cyan)}
+tbody tr:hover{background:rgba(255,255,255,.03)}
+:root[data-theme="light"] tbody tr:hover{background:rgba(9,39,69,.03)}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.pill.c{background:rgba(229,72,77,.16);color:#ff8a8d}.pill.w{background:rgba(245,181,61,.16);color:var(--warn)}.pill.g{background:rgba(63,207,142,.16);color:var(--good)}
+.stbadge{padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+.st-a{background:rgba(63,207,142,.16);color:var(--good)}.st-c{background:rgba(229,72,77,.16);color:#ff8a8d}.st-p{background:rgba(245,181,61,.16);color:var(--warn)}
+.fin-inputs{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:16px}
+.fin-inputs .fi{display:flex;flex-direction:column;gap:5px}
+.fin-inputs label{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700}
+.fin-inputs input{background:var(--surface2);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 10px;width:120px;font-size:14px;font-variant-numeric:tabular-nums}
+.fin-inputs input:focus{outline:2px solid var(--cyan);border-color:var(--cyan)}
+.fin-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}@media(max-width:720px){.fin-tiles{grid-template-columns:repeat(2,1fr)}}
+.ftile{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--surface2)}
+.ftile .l{font-size:11px;color:var(--ink2);display:flex;align-items:center;gap:6px}.ftile .v{font-size:21px;font-weight:800;margin-top:6px;letter-spacing:-.3px}.ftile .h{font-size:10.5px;color:var(--muted);margin-top:5px}
+.simbox{margin-top:16px;padding:16px;border:1px dashed var(--line);border-radius:12px;background:var(--surface2)}
+.simbox h3{font-size:13px;margin-bottom:12px}.sim-row{display:flex;flex-wrap:wrap;gap:20px;align-items:center}.sim-row .fi{display:flex;flex-direction:column;gap:6px}
+.sim-out{margin-top:14px;font-size:13px;color:var(--ink2);line-height:1.7}.sim-out b{color:var(--good);font-variant-numeric:tabular-nums;font-size:15px}
+input[type=range]{width:180px;accent-color:var(--cyan)}
+.acts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}@media(max-width:980px){.acts{grid-template-columns:1fr}}
+.act{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--surface2);display:flex;flex-direction:column;gap:10px}
+.act .tag{align-self:flex-start;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:3px 9px;border-radius:6px}
+.act h3{font-size:15px}.act p{margin:0;color:var(--ink2);font-size:12.5px}.act .impact{margin-top:auto;padding-top:10px;border-top:1px solid var(--line);font-size:12px}.act .impact b{color:var(--cyan);font-variant-numeric:tabular-nums}
+.tag-fin{background:rgba(245,181,61,.16);color:var(--fin)}.tag-rel{background:rgba(232,123,164,.18);color:var(--rel)}.tag-prod{background:rgba(53,116,255,.18);color:#7ea6ff}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.2s;z-index:90}#overlay.on{opacity:1;pointer-events:auto}
+#drawer{position:fixed;top:0;right:0;height:100%;width:min(960px,96vw);background:var(--bg);border-left:1px solid var(--line);box-shadow:-10px 0 40px rgba(0,0,0,.5);transform:translateX(100%);transition:transform .25s;z-index:95;display:flex;flex-direction:column}
+#drawer.on{transform:translateX(0)}
+.dw-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px}.dw-head h2{font-size:16px;flex:1}.dw-head .cnt{color:var(--cyan);font-weight:700}
+.dw-close{background:var(--surface2);border:1px solid var(--line);color:var(--ink);border-radius:9px;width:34px;height:34px;cursor:pointer;font-size:16px}
+.dw-tools{padding:10px 20px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dw-tools input{background:var(--surface2);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 11px;font-size:13px;flex:1;min-width:160px}
+.dw-body{overflow:auto;flex:1;padding:0 8px}.dw-body table{font-size:12px}.dw-body th{position:sticky;top:0;background:var(--bg);z-index:1}
+.dw-body td:first-child,.dw-body th:first-child{position:sticky;left:0;background:var(--bg)}
+.dw-sum{padding:12px 20px;border-top:1px solid var(--line);font-size:12px;color:var(--ink2);display:flex;gap:20px;flex-wrap:wrap}.dw-sum b{color:var(--ink)}
+#tip{position:fixed;pointer-events:none;z-index:200;background:#031522;border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:12px;color:var(--ink);box-shadow:0 6px 24px rgba(0,0,0,.5);opacity:0;transition:opacity .1s;max-width:290px;line-height:1.5}
+:root[data-theme="light"] #tip{background:#fff}
+svg{display:block;width:100%;height:auto;overflow:hidden}.axis{fill:var(--muted);font-size:10.5px}.gridln{stroke:var(--line);stroke-width:1}
+.crosshair{stroke:var(--ink2);stroke-width:1;stroke-dasharray:3 3;pointer-events:none;opacity:0}
+.hdr img.logo{height:40px}
+.grid>*{min-width:0}.card{min-width:0}
+.wrap>.grid,.wrap>.card{margin-bottom:18px}
+.simbar{background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:0 0 14px}
+.simrow{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.simrow+.simrow{margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+.simbar select{padding:6px 9px;font-size:12.5px;max-width:none}
+.simbar .fseg button{padding:6px 11px;font-size:12.5px}
+.simbar .fchip{font-size:11.5px;padding:4px 10px}
+.simbar input[type=range]{width:140px}
+/* High Ticket hero + alerta */
+.ht-hero{text-align:center;margin:14px 0 8px;padding:22px 16px;border-radius:16px;background:linear-gradient(180deg,rgba(245,181,61,.12),rgba(245,181,61,.03));border:1px solid rgba(245,181,61,.35)}
+.ht-hero .eye{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--fin);font-weight:700}
+.ht-hero h2{font-size:26px;margin:6px 0 4px;letter-spacing:-.3px}
+.ht-hero p{margin:0;color:var(--ink2);font-size:12.5px;max-width:760px;margin:0 auto}
+.ht-alert{display:flex;gap:12px;align-items:center;background:rgba(245,181,61,.10);border:1px solid rgba(245,181,61,.4);border-radius:12px;padding:12px 16px;margin:10px 0 4px;font-size:12.5px;color:var(--ink)}
+.ht-alert .ic{font-size:18px;flex:none}
+.dl-btn{margin-left:auto;flex:none;background:var(--good);color:#04241a;border-radius:9px;padding:9px 14px;font-weight:700;text-decoration:none;font-size:12.5px;white-space:nowrap}
+.dl-btn:hover{filter:brightness(1.08)}
+.combo-grid{display:grid;gap:2px}
+.combo-cell{border-radius:4px;padding:5px 4px;text-align:center;font-size:11px;font-variant-numeric:tabular-nums}
+.cmp-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.qf{display:inline-flex;gap:6px;flex-wrap:wrap}
+.qf .fchip{font-size:11.5px}
+.note{font-size:11.5px;color:var(--muted);margin-top:12px;line-height:1.55}
+.prov{display:inline-block;font-size:10px;padding:1px 7px;border-radius:5px;border:1px solid var(--line);color:var(--muted);margin-left:4px}
+.prov.real{color:var(--good);border-color:rgba(63,207,142,.4)}.prov.est{color:var(--warn);border-color:rgba(245,181,61,.4)}
+.sec-title{display:flex;align-items:baseline;gap:10px;margin:28px 2px 12px;flex-wrap:wrap}.sec-title h2{font-size:16px}.sec-title span{color:var(--muted);font-size:12px}
+hr.div{border:0;border-top:1px solid var(--line);margin:32px 0 4px}
+footer{margin-top:34px;color:var(--muted);font-size:11.5px;line-height:1.65}footer b{color:var(--ink2)}
+.clickable{cursor:pointer}
+</style>
+
+<header><div class="hdr">
+  <img class="logo" id="brandLogo" src="__LOGO_WHITE__" alt="TMB">
+  <div class="ttl"><h1>Churn — Visão Estratégica</h1>
+    <p>Pipeline de CS · <b>com gestor</b> × <b>Sem Gestor TMB</b> (base coletiva) · GMV do Metabase por <code>Código</code> · ref. <span id="refMes">—</span></p></div>
+  <button class="tgl" id="themeBtn">◐ Tema</button>
+</div></header>
+
+<div class="wrap">
+  <div class="fbar">
+    <div class="frow">
+      <div class="fgroup"><span class="flab">Bloco</span><div class="fseg" id="segBloco"><button data-v="" aria-pressed="true">Todos</button><button data-v="com">Com gestor</button><button data-v="sem">Sem Gestor TMB</button></div></div>
+      <div class="fgroup"><span class="flab">Status</span><div class="fseg stt" id="segStatus"><button data-v="Churn" aria-pressed="true">Churn</button><button data-v="Pré-Churn">Pré-Churn</button><button data-v="ambos">Ambos</button></div></div>
+      <div class="fgroup"><span class="flab">Lente GMV <span class="info" tabindex="0" data-tip="Qual faturamento do Metabase usar. Total histórico = tudo que já vendeu na TMB (estoque plurianual). Últimos 12m = fechamento recente. Pico 12m = melhor janela de 12m = run-rate anual de capacidade. Projeção /ano só faz sentido em Pico 12m e Últimos 12m.">i</span></span>
+        <div class="fseg lens" id="segLens"><button data-v="pk" aria-pressed="true">Pico 12m</button><button data-v="gt">Total histórico</button><button data-v="g12">Últimos 12m</button></div></div>
+      <span class="spacer"></span>
+      <button class="drawer-btn" id="openDrawerBtn">▤ Ver produtores (<span id="drawerCnt">0</span>)</button>
+    </div>
+    <div class="frow">
+      <div class="fgroup"><span class="flab">Cluster</span><div class="fchips" id="fCluster"></div></div>
+      <div class="fgroup"><span class="flab">Safra</span><div class="fchips" id="fSafra"></div></div>
+      <div class="fgroup"><span class="flab">Gestor</span><select id="fGestor" aria-label="Filtrar por gestor"><option value="">Todos</option></select></div>
+      <div class="fgroup"><span class="flab">Motivo</span><select id="fMotivo" aria-label="Filtrar por motivo"><option value="">Todos</option></select></div>
+      <span class="spacer"></span>
+      <span class="active-note" id="activeNote"></span>
+      <button class="reset-btn" id="resetBtn">↺ Limpar</button>
+    </div>
+  </div>
+
+  <div class="grid kpis">
+    <div class="card kpi clickable" id="kpiProd"><div class="lbl" id="kProdLbl">Produtores em churn <span class="info" tabindex="0" data-tip="Status do produtor no fVendas (Metabase): Churn = >121 dias sem vender; Pré-Churn = 62–121 dias. Clique para ver a lista.">i</span></div><div class="val tnum" id="kProd">—</div><div class="delta" id="kProdSub">—</div></div>
+    <div class="card kpi"><div class="lbl">Taxa de churn <span class="prov real">real</span> <span class="info" tabindex="0" data-tip="Churnados ÷ base do pipeline de CS (com gestor 922 · Sem Gestor TMB 4.498). Reflete o bloco; não muda com cluster/safra/motivo.">i</span></div><div class="val tnum accent-sem" id="kRate">—</div><div class="delta" id="kRateSub">base do bloco (CS)</div></div>
+    <div class="card kpi clickable" id="kpiCov"><div class="lbl">Cobertura de motivo <span class="prov real">real</span> <span class="info" tabindex="0" data-tip="% dos produtores do filtro com motivos_de_churn preenchido no HubSpot. Clique para ver quem NÃO tem causa documentada.">i</span></div><div class="val tnum" id="kCov">—</div><div class="delta" id="kCovSub">causa documentada</div></div>
+    <div class="card kpi clickable" id="kpiGmv"><div class="lbl" id="kGmvLbl">GMV em risco <span class="prov real">Metabase</span> <span class="info" tabindex="0" data-tip="Faturamento (card 189, Valor Principal) dos produtores do filtro, na lente escolhida, somado por Código. Bruto (a confirmar se desconta cancelamentos). Clique para a lista.">i</span></div><div class="val tnum accent-fin" id="kGmv">—</div><div class="delta" id="kGmvSub">—</div></div>
+  </div>
+
+  <div class="sec-title"><h2>Os dois blocos</h2><span>a base coletiva (Sem Gestor TMB) churna ~3× mais e quase não registra a causa · clique num bloco para filtrar</span></div>
+  <div class="card"><div class="block-comp" id="blockComp"></div>
+    <div class="note">“Sem Gestor TMB” = owner coletivo no HubSpot (base sem gestor individual). Onde há gestor nomeado, a taxa cai e a documentação de causa sobe ~15×.</div></div>
+
+  <div class="sec-title"><h2>Evolução de status (histórico)</h2><span>Ativo · Pré-Churn · Churn empilhado, mês a mês (lógica do BI) · clique num mês → quem entrou em churn nele</span></div>
+  <div class="card">
+    <div class="card-head"><div class="legend"><span><i style="background:var(--st-a)"></i>Ativo</span><span><i style="background:var(--st-p)"></i>Pré-Churn</span><span><i style="background:var(--st-c)"></i>Churn</span></div>
+      <div class="chart-tools"><button class="toolbtn" id="flowAbs">Nº</button><button class="toolbtn" id="flowPct" aria-pressed="true">100%</button></div></div>
+    <div id="chFlow"></div><div class="note" id="flowNote"></div>
+  </div>
+
+  <div class="sec-title"><h2>Recuperação mensal</h2><span>reativações: produtores que voltaram a vender (Churn ou Pré-Churn → Ativo) · estamos recuperando mais?</span></div>
+  <div class="card">
+    <div class="card-head"><div class="legend" id="recLegend"></div>
+      <div class="chart-tools"><button class="toolbtn" id="recBlk" aria-pressed="true">Por bloco</button><button class="toolbtn" id="recTipo">Plena/Leve</button></div></div>
+    <div id="chRecovery"></div><div class="note" id="recNote"></div>
+  </div>
+
+  <div class="sec-title"><h2>Por cluster</h2><span>tier pelo faturamento de pico 12m (Metabase) · Energium ≤100k · Palladium ≤1M · Titanium ≤5M · Rhodium 5M+ · clique para abrir os produtores</span></div>
+  <div class="grid cols2">
+    <div class="card"><h2>Churn por cluster</h2><div class="sub">nº de produtores · por bloco</div>
+      <div class="legend"><span><i style="background:var(--sem)"></i>Sem Gestor TMB</span><span><i style="background:var(--com)"></i>Com gestor</span></div><div id="chClusterCount"></div></div>
+    <div class="card"><h2>GMV em risco por cluster <span class="prov real">Metabase</span></h2><div class="sub" id="clGmvSub">lente atual · R$ · clique numa barra</div>
+      <div id="chClusterGmv"></div><div class="note" id="whaleNote"></div></div>
+  </div>
+
+  <div class="sec-title"><h2>Por que saem — causa raiz</h2><span>motivos do HubSpot (multisseleção) · clique num motivo ou categoria → produtores</span></div>
+  <div class="grid cols3">
+    <div class="card"><h2>Motivos de churn</h2><div class="sub" id="motSub">cor = categoria de causa</div>
+      <div class="legend"><span><i style="background:var(--fin)"></i>Financeiro/Crédito</span><span><i style="background:var(--rel)"></i>Relacionamento</span><span><i style="background:var(--blue)"></i>Produto</span><span><i style="background:var(--muted)"></i>Negócio/Outro</span></div><div id="chMotivos"></div></div>
+    <div class="card"><h2>Causa raiz agregada</h2><div class="sub">participação por categoria · clique numa fatia</div><div id="chCategoria"></div><div class="note" id="hipoteseNote"></div></div>
+  </div>
+
+  <div class="sec-title"><h2>Detalhe por gestor</h2><span>GMV na lente atual · clique numa linha para abrir os produtores</span></div>
+  <div class="card" style="overflow-x:auto"><table id="gTable"><thead><tr>
+    <th data-k="nome">Gestor</th><th data-k="base">Base CS</th><th data-k="churn">Churn</th><th data-k="rate">Taxa %</th>
+    <th data-k="doc">C/ motivo</th><th data-k="cov">Cobertura %</th><th data-k="gmv">GMV risco</th><th data-k="top">Top motivo</th>
+  </tr></thead><tbody></tbody></table></div>
+
+  <div class="sec-title"><h2>Leitura financeira <span class="prov est">modelo</span></h2><span>a parte de baixo é a camada de projeção — cenários sobre os números acima</span></div>
+  <div class="card">
+    <div class="note" id="finHeadline" style="font-size:13.5px;color:var(--ink);margin:0 0 14px"></div>
+    <div class="fin-inputs">
+      <div class="fi"><label>Receita (juros+adm) %</label><input id="inRec" type="number" value="20" step="0.5"></div>
+      <div class="fi"><label>Valor médio do boleto R$ <span class="info" tabindex="0" data-tip="Valor de CADA boleto/parcela emitido (não o ticket cheio da venda). Uma venda parcelada gera vários boletos, e a operação custa R$1 por boleto. Boletos ≈ GMV ÷ este valor.">i</span></label><input id="inTicket" type="number" value="500" step="10"></div>
+      <div class="fi"><label>Antecipação %</label><input id="inAnt" type="number" value="8.5" step="0.5"></div>
+      <div class="fi"><label>% base que antecipa</label><input id="inUpt" type="number" value="30" step="5"></div>
+    </div>
+    <div class="fin-tiles">
+      <div class="ftile"><div class="l">GMV em risco <span class="info" tabindex="0" data-tip="Soma do GMV (lente atual) dos produtores do filtro.">i</span></div><div class="v tnum accent-fin" id="fGmv">—</div><div class="h" id="fGmvH">lente atual</div></div>
+      <div class="ftile"><div class="l">Receita <span class="info" tabindex="0" data-tip="GMV × % receita (juros + taxa administrativa).">i</span></div><div class="v tnum" id="fRec">—</div><div class="h">juros + adm</div></div>
+      <div class="ftile"><div class="l">Taxa de operação <span class="info" tabindex="0" data-tip="R$ 1,00 por boleto emitido. Boletos estimados = GMV ÷ valor médio do boleto (a parcela). Boleto de maior valor → menos boletos → menor taxa.">i</span></div><div class="v tnum" id="fOp">—</div><div class="h">R$1 × boletos estim.</div></div>
+      <div class="ftile"><div class="l">Antecipação <span class="info" tabindex="0" data-tip="GMV × 8,5% × % da base que antecipa.">i</span></div><div class="v tnum" id="fAnt">—</div><div class="h">8,5% × adesão</div></div>
+    </div>
+    <div class="simbox">
+      <h3>🎯 Simulador de recuperação — quanto um projeto devolve de receita</h3>
+      <div style="margin-bottom:12px"><span class="flab">Simular por</span> <div class="fseg" id="recModeSeg" style="display:inline-flex;margin-left:6px;vertical-align:middle"><button data-m="pct" aria-pressed="true">% da base</button><button data-m="qtd">Nº de produtores</button></div></div>
+      <div class="sim-row">
+        <div class="fi"><label>Recuperar <b style="color:var(--com)">Com gestor</b> <span id="recComUnit" style="color:var(--muted)">(% da base)</span></label><div style="display:flex;align-items:center;gap:8px"><input type="number" id="recComN" value="15" min="0" step="1" style="width:110px;background:var(--surface2);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 10px;font-size:14px"><span class="flab" style="opacity:.7">de <b id="recComMax">—</b> em churn</span></div></div>
+        <div class="fi"><label>Recuperar <b style="color:var(--sem)">Sem Gestor TMB</b> <span id="recSemUnit" style="color:var(--muted)">(% da base)</span></label><div style="display:flex;align-items:center;gap:8px"><input type="number" id="recSemN" value="10" min="0" step="1" style="width:110px;background:var(--surface2);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 10px;font-size:14px"><span class="flab" style="opacity:.7">de <b id="recSemMax">—</b> em churn</span></div></div>
+      </div>
+      <div class="sim-out" id="simOut"></div>
+    </div>
+    <div class="note" id="finNote"></div>
+  </div>
+
+  <div class="sec-title"><h2>Ações → causa raiz</h2><span>iniciativas mapeadas com o time tech e o churn/GMV/receita que cada uma pode devolver</span></div>
+  <div class="acts" id="actions"></div>
+
+  <hr class="div" style="border-top-width:3px;border-color:rgba(245,181,61,.5)">
+  <div class="ht-hero" id="ht-top">
+    <div class="eye">◆ outra base · outra análise ◆</div>
+    <h2>🎯 High Ticket — Motor de Risco</h2>
+    <p>Estudo à parte: inadimplência de vendas com <b>ticket ≥ R$ 15.000</b> (high ticket), efetivadas nos últimos 12 meses. Base <b>vwm_parcelas_base</b> (Metabase) — reproduz 1:1 a planilha <i>Inadimplencia_HighTicket_TMB_v11</i>.</p>
+  </div>
+  <div class="ht-alert"><span class="ic">⚠️</span><div><b>Base fixa (snapshot em Excel).</b> Estes números são um retrato congelado — efetivações de <b id="htPerDe">—</b> a <b id="htPerAte">—</b>, foto de <b id="htPerSnap">—</b>. Não é ao vivo; para atualizar, refazer a extração da base. As demais seções acima (churn) são de outra base.</div><a class="dl-btn" id="xlsBtn" href="__XLS_URL__" target="_blank" rel="noopener">📊 Abrir planilha oficial (Excel)</a></div>
+  <div class="grid kpis">
+    <div class="card kpi"><div class="lbl">GMV analisado <span class="info" tabindex="0" data-tip="Soma do ticket (valor_principal) dos pedidos high ticket efetivados nos últimos 12 meses.">i</span></div><div class="val tnum accent-fin" id="htGmv">—</div><div class="delta" id="htPed">—</div></div>
+    <div class="card kpi"><div class="lbl">Inadimplência (Financeira) <span class="info" tabindex="0" data-tip="(Vencido D+30 + Atrasado) ÷ (Vencido + Atrasado + Recebido). Todo valor vencido conta — métrica-headline escolhida.">i</span></div><div class="val tnum accent-sem" id="htIf">—</div><div class="delta">Original <span id="htIo"></span> · Projetada <span id="htIp"></span></div></div>
+    <div class="card kpi"><div class="lbl">Recebido <span class="info" tabindex="0" data-tip="Parcelas já pagas (valor sem juros).">i</span></div><div class="val tnum accent-good" id="htRec">—</div><div class="delta">carteira sem juros</div></div>
+    <div class="card kpi"><div class="lbl">Risco projetado <span class="info" tabindex="0" data-tip="Atrasado + Aguardando de pedidos que já têm ≥1 parcela Vencido D+30 (assume que não pagarão).">i</span></div><div class="val tnum accent-crit" id="htRisco">—</div><div class="delta">cenário pessimista</div></div>
+  </div>
+  <div class="card"><h2>Composição da carteira & métodos de inadimplência</h2><div class="sub">carteira sem juros (R$) · 3 formas de medir a mesma base</div>
+    <div id="htCompBar"></div><div class="fin3" id="htMetodos" style="margin-top:16px"></div></div>
+  <div class="grid cols2">
+    <div class="card"><h2>Inadimplência por faixa de Score 🎓</h2><div class="sub">cliente_score · cor = farol · barra = % Financeira · passe o mouse p/ os 3 métodos</div>
+      <div class="legend"><span><i style="background:var(--st-c)"></i>ALTO</span><span><i style="background:var(--st-p)"></i>MÉDIO</span><span><i style="background:var(--st-a)"></i>BAIXO</span></div>
+      <div id="htScore"></div><div class="note" id="htScoreNote"></div></div>
+    <div class="card"><h2>Inadimplência por Risco ⚠️</h2><div class="sub">cliente_risco — valida se o score prevê inadimplência</div><div id="htRiscoCh"></div></div>
+  </div>
+  <div class="grid cols2">
+    <div class="card"><h2>Onde os alunos param de pagar 📉</h2><div class="sub">% inadimplência por número de parcela (0 = entrada)</div>
+      <div class="legend"><span><i style="background:var(--st-c)"></i>Original</span><span><i style="background:var(--st-p)"></i>Financeira</span></div><div id="htParcela"></div></div>
+    <div class="card"><h2>Cohort — Safra × Parcela 🧬</h2><div class="sub">inadimplência acumulada por parcela · mais vermelho = pior</div><div id="htCoorte" style="overflow-x:auto"></div></div>
+  </div>
+  <div class="grid cols2">
+    <div class="card"><div class="card-head"><div><h2>Quebras</h2><div class="sub">% inadimplência Financeira por dimensão</div></div><div class="chart-tools" id="htBrkTabs"></div></div><div id="htBrk"></div></div>
+    <div class="card"><h2>Top produtores em risco 🔮</h2><div class="sub">exposição projetada · top 10</div>
+      <div style="overflow-x:auto"><table id="htTop"><thead><tr><th>Produtor</th><th>% Original</th><th>% Projetada</th><th>Vencido D+30</th></tr></thead><tbody></tbody></table></div></div>
+  </div>
+  <div class="card"><div class="card-head"><div><h2>Explorador de combinações 🧩</h2><div class="sub">marque quantas dimensões quiser — cada linha é uma combinação existente, com sua inadimplência e volume</div></div></div>
+    <div class="qf" id="htcbDims" style="margin-bottom:12px"></div>
+    <div id="htCombo" style="overflow-x:auto"></div>
+    <div class="note">Dimensões da base: Score · Risco · Tipo · Modalidade · Gênero · Safra (combine as que quiser, menos ou mais). <b>Estado/UF não existe em vwm_parcelas_base.</b> Ordenado por GMV; combinações com &lt;5 pedidos omitidas. Barra = % inadimplência financeira.</div>
+  </div>
+  <div class="sec-title"><h2>Simulador — Motor de Risco por Score 🎯 <span class="info" tabindex="0" data-tip="Como usar: ① escolha um cenário ou arraste o corte de score (bloqueia quem tem score ≤ corte); ② combine os filtros de público — somam com 'E' (ex.: Gênero=F + Tipo=Evento = mulheres que compraram eventos); ③ leia atual × simulado abaixo. Cada filtro a mais estreita o recorte.">i</span></h2><span>bloqueie faixas de score e veja inadimplência evitada × venda perdida · simule N cenários</span></div>
+  <div class="card">
+    <div class="simbar">
+      <div class="simrow">
+        <span class="flab">Cenário</span><div class="fseg" id="htScenario"><button data-c="-1" aria-pressed="true">Agressivo</button><button data-c="200">Moderado ≤200</button><button data-c="600">Conservador ≤600</button></div>
+        <span class="flab">Corte: <b id="htCutV" style="color:var(--fin)">aprova todos</b></span><input type="range" id="htCut" min="-1" max="999" value="-1">
+        <span class="flab">Sem-score</span><div class="fseg stt" id="htSemSeg"><button data-v="1">Bloquear</button><button data-v="0" aria-pressed="true">Aprovar</button></div>
+      </div>
+      <div class="simrow">
+        <span class="flab">Público (E)</span>
+        <select id="htFTipo"><option value="">Tipo: todos</option></select>
+        <select id="htFRisco"><option value="">Risco: todos</option></select>
+        <select id="htFGen"><option value="">Gênero: todos</option></select>
+        <select id="htFModal"><option value="">Modalidade: todas</option></select>
+        <select id="htFSafra"><option value="">Safra: todas</option></select>
+        <span style="flex:1;min-width:8px"></span>
+        <div class="qf" id="htQuick"></div>
+      </div>
+    </div>
+    <div class="fin-tiles">
+      <div class="ftile"><div class="l">Inadimplência (Financeira) <span class="info" tabindex="0" data-tip="Como está hoje → como ficaria com o bloqueio. A queda em pontos percentuais é o ganho de saúde da carteira.">i</span></div><div class="v tnum" id="sInadBA" style="font-size:19px">—</div><div class="h" id="sInadPP">—</div></div>
+      <div class="ftile"><div class="l">Venda perdida (GMV) <span class="info" tabindex="0" data-tip="Faturamento dos pedidos que seriam bloqueados no checkout — vendas que deixariam de acontecer.">i</span></div><div class="v tnum accent-sem" id="sBlkGmv">—</div><div class="h" id="sBlkGmvPct">—</div></div>
+      <div class="ftile"><div class="l">Inadimplência evitada <span class="info" tabindex="0" data-tip="Vencido D+30 + Atrasado dos pedidos bloqueados — o valor de calote que deixa de existir.">i</span></div><div class="v tnum accent-good" id="sAvoid">—</div><div class="h" id="sAvoidH">Vencido+Atrasado barrado</div></div>
+      <div class="ftile" style="border-color:rgba(245,181,61,.4)"><div class="l">⚠️ Bons pagadores bloqueados <span class="info" tabindex="0" data-tip="Pedidos bloqueados que NÃO tinham nenhuma parcela vencida — alunos que pagariam em dia, barrados só pelo score baixo. É o custo de bloquear.">i</span></div><div class="v tnum accent-fin" id="sGoodN">—</div><div class="h" id="sGoodH">—</div></div>
+    </div>
+    <div class="simbox"><div class="card-head" style="margin-bottom:12px"><div><h3>Cenário atual × simulado</h3><div class="sub" style="margin:2px 0 0">inadimplência (Financeira) por dimensão — barra clara = hoje · barra escura = com o bloqueio</div></div><div class="cmp-tabs" id="htCmpTabs"></div></div><div id="htCmp"></div></div>
+    <div class="simbox"><h3>Inadimplência global: antes → depois</h3><div id="htBeforeAfter"></div></div>
+    <div class="simbox" style="border-color:var(--cyan)"><h3>🗣️ Como apresentar ao produtor</h3><div class="sim-out" id="htPitch"></div></div>
+    <div class="note">Base high ticket real (Metabase). “Bloquear” = pedido não teria sido aprovado no checkout por score baixo → perde-se o GMV daquele pedido (inclusive bons pagadores da faixa), mas evita-se a inadimplência dele. Hoje o checkout aprova todos (só barra menor de idade e fraude). Sem-score: <b id="htSemState">bloqueado</b>.</div>
+  </div>
+
+  <hr class="div"><footer id="foot"></footer>
+</div>
+
+<div id="overlay"></div>
+<div id="drawer">
+  <div class="dw-head"><h2 id="dwTitle">Produtores</h2><span class="cnt" id="dwCnt"></span><button class="dw-close" id="dwClose">✕</button></div>
+  <div class="dw-tools"><input id="dwSearch" placeholder="Buscar por código ou nome..."><span class="note" style="margin:0">Código + nome do produtor (Metabase) · uso interno TMB · estático, sem API</span></div>
+  <div class="dw-body"><table id="dwTable"><thead><tr>
+    <th data-k="id">Código</th><th data-k="nm" data-tip="Nome do produtor (Metabase)">Produtor</th><th data-k="b">Bloco</th><th data-k="g">Gestor</th><th data-k="c">Cluster</th><th data-k="y">Safra</th><th data-k="st">Status</th>
+    <th data-k="gt" data-tip="Tudo que já vendeu na TMB (histórico)">GMV total</th><th data-k="g12" data-tip="Faturamento nos últimos 12 meses">GMV 12m</th><th data-k="pk" data-tip="Melhor janela de 12m = run-rate anual">Run-rate</th><th data-k="loss" data-tip="GMV da lente × (receita+operação+antecipação)">Perda/ano</th><th data-k="ls">Últ. venda</th><th data-k="m">Motivo</th>
+  </tr></thead><tbody></tbody></table></div>
+  <div class="dw-sum" id="dwSum"></div>
+</div>
+<div id="tip"></div>
+
+<script>
+const DATA=__DATA__;
+const LOGO_WHITE="__LOGO_WHITE__",LOGO_DARK="__LOGO_DARK__";
+const fmtInt=n=>Math.round(n).toLocaleString('pt-BR');
+const fmtBRL=n=>{n=n||0;if(Math.abs(n)>=1e6)return 'R$ '+(n/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi';if(Math.abs(n)>=1e3)return 'R$ '+(n/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+' mil';return 'R$ '+fmtInt(n)};
+const fmtR=n=>'R$ '+Math.round(n||0).toLocaleString('pt-BR');
+const pct=n=>(''+n).replace('.',',')+'%';
+const CLUS=["Energium","Palladium","Titanium","Rhodium"];
+const CLUS_COLOR={Energium:"var(--cl-ene)",Palladium:"var(--cl-pal)",Titanium:"var(--cl-tit)",Rhodium:"var(--cl-rho)"};
+const CAT={"Inadimplência Alta":"fin","Falta de Antecipação":"fin","Problemas de Fluxo de Caixa":"fin","Taxa do Produtor TMB":"fin","Taxa de Juros de Financiamento Aluno":"fin","Sem retorno do produtor":"rel","Problemas de Relacionamento com a TMB":"rel","Problemas de Integração da Plataforma":"prod","Dificuldade com a plataforma":"prod","Dificuldade no checkout do aluno":"prod","Só tenho produtos LOW TICKET (até 297,00)":"prod","Produto Internacional":"prod","Encerrou/Pausou o Projeto":"neg","Janela de Lançamentos":"neg","Contrato de Exclusividade com outra financeira":"neg","Usa somente na recuperação de vendas":"neg","Produtor ATIVO, apenas trocou a conta":"neg","Voltou a usar TMB!":"neg","Outro Motivo":"neg"};
+const CAT_COLOR={fin:"var(--fin)",rel:"var(--rel)",prod:"var(--blue)",neg:"var(--muted)"};
+const CAT_NAME={fin:"Financeiro/Crédito",rel:"Relacionamento",prod:"Produto/Plataforma",neg:"Negócio/Outro"};
+const LENS_NAME={pk:"pico 12m (run-rate anual)",gt:"total histórico",g12:"últimos 12 meses"};
+const ANO=()=>state.lens==='gt'?'':'/ano';
+
+const state={bloco:"",cluster:new Set(),safra:new Set(),gestor:"",motivo:"",lens:"pk",status:"Churn",flowMode:"pct",recMode:"blk",recSimMode:"pct"};
+const tip=document.getElementById('tip');
+function bindTips(root){(root||document).querySelectorAll('[data-tip]').forEach(n=>{if(n._t)return;n._t=1;n.addEventListener('mousemove',e=>showTip(e,n.getAttribute('data-tip')));n.addEventListener('mouseleave',hideTip);n.addEventListener('focus',e=>{const r=n.getBoundingClientRect();showTip({clientX:r.left,clientY:r.bottom},n.getAttribute('data-tip'));});n.addEventListener('blur',hideTip);});}
+function showTip(e,h){tip.innerHTML=h;tip.style.opacity=1;let x=e.clientX+14,y=e.clientY+14;if(x>innerWidth-300)x=e.clientX-300;if(y>innerHeight-90)y=e.clientY-70;tip.style.left=x+'px';tip.style.top=y+'px';}
+function hideTip(){tip.style.opacity=0;}
+
+const churnRecs=DATA.records.filter(r=>r.st==='Churn');
+const preRecs=DATA.records.filter(r=>r.st==='Pré-Churn');
+function gmvOf(r){return r[state.lens]||0;}
+function takeFrac(){const rec=(+inRec.value||0)/100,ticket=+inTicket.value||1,ant=(+inAnt.value||0)/100,upt=(+inUpt.value||0)/100;return rec+1/ticket+ant*upt;}
+function lossOf(gmv){return gmv*takeFrac();}
+function activeBase(){return state.status==='ambos'?DATA.records:(state.status==='Pré-Churn'?preRecs:churnRecs);}
+function filtered(base){return (base||activeBase()).filter(r=>{
+  if(state.bloco&&r.b!==state.bloco)return false;
+  if(state.cluster.size&&!state.cluster.has(r.c))return false;
+  if(state.safra.size&&!state.safra.has(String(r.y)))return false;
+  if(state.gestor&&r.g!==state.gestor)return false;
+  if(state.motivo&&!(r.m||[]).includes(state.motivo))return false;
+  return true;});}
+
+// ---- charts ----
+function hbars(el,items,{max,fmt,onclick,tip}={}){max=max||Math.max(1,...items.map(i=>i.value));fmt=fmt||fmtInt;
+  el.innerHTML=items.map((i,ix)=>`<div class="hbar" data-ix="${ix}" ${tip?`data-tip="${tip(i)}"`:''}><div class="name" title="${i.name}">${i.name}</div><div class="track"><div class="fill" style="width:${Math.max(1,100*i.value/max)}%;background:${i.color||'var(--cyan)'}"></div></div><div class="num tnum">${fmt(i.value)}</div></div>`).join('')||'<div class="note">Sem dados no filtro.</div>';
+  bindTips(el);if(onclick)el.querySelectorAll('.hbar').forEach(n=>n.onclick=()=>onclick(items[+n.dataset.ix]));}
+function groupedBars(el,cats,series,onclick){const W=560,H=230,pl=44,pb=26,pt=8,pr=8,iw=W-pl-pr,ih=H-pt-pb;
+  const max=Math.max(1,...cats.flatMap(c=>series.map(s=>c[s.key]||0)));const bw=iw/cats.length,gap=12,innerW=bw-gap,sub=innerW/series.length;let g='';
+  for(let t=0;t<=4;t++){const y=pt+ih-ih*t/4;g+=`<line class="gridln" x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}"/><text class="axis" x="${pl-6}" y="${y+3}" text-anchor="end">${fmtInt(max*t/4)}</text>`;}
+  cats.forEach((c,ci)=>{const x0=pl+bw*ci+gap/2;g+=`<rect class="clickable" data-cat="${c.name}" x="${pl+bw*ci}" y="${pt}" width="${bw}" height="${ih}" fill="transparent"/>`;g+=`<text class="axis clickable" data-cat="${c.name}" x="${x0+innerW/2}" y="${H-8}" text-anchor="middle" style="fill:var(--ink2)">${c.name}</text>`;
+    series.forEach((s,si)=>{const v=c[s.key]||0,h=ih*v/max,x=x0+sub*si,y=pt+ih-h;g+=`<rect class="clickable" data-cat="${c.name}" x="${x+1}" y="${y}" width="${sub-2}" height="${Math.max(0,h)}" rx="3" fill="${s.color}" data-tip="${c.name} · ${s.label}: ${fmtInt(v)}"/>`;if(v>0)g+=`<text class="axis" x="${x+sub/2}" y="${y-3}" text-anchor="middle" style="fill:var(--ink2)">${fmtInt(v)}</text>`;});});
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;bindTips(el);if(onclick)el.querySelectorAll('[data-cat]').forEach(n=>n.onclick=()=>onclick(n.dataset.cat));}
+function wireHover(el,{n,X,pt,ih,tipHtml,onClick,markFn}){const svg=el.querySelector('svg');if(!svg)return;const NS='http://www.w3.org/2000/svg';
+  const line=document.createElementNS(NS,'line');line.setAttribute('class','crosshair');line.setAttribute('y1',pt);line.setAttribute('y2',pt+ih);svg.appendChild(line);
+  const mg=document.createElementNS(NS,'g');svg.appendChild(mg);
+  const cap=document.createElementNS(NS,'rect');cap.setAttribute('x',X(0));cap.setAttribute('y',pt);cap.setAttribute('width',Math.max(1,X(n-1)-X(0)));cap.setAttribute('height',ih);cap.setAttribute('fill','transparent');if(onClick)cap.style.cursor='pointer';svg.appendChild(cap);
+  const idx=e=>{const r=svg.getBoundingClientRect();const vw=(svg.viewBox&&svg.viewBox.baseVal&&svg.viewBox.baseVal.width)||900;const mx=(e.clientX-r.left)/(r.width||1)*vw;const step=(X(n-1)-X(0))/Math.max(1,n-1)||1;let i=Math.round((mx-X(0))/step);return Math.max(0,Math.min(n-1,i));};
+  cap.addEventListener('mousemove',e=>{const i=idx(e);const x=X(i);line.setAttribute('x1',x);line.setAttribute('x2',x);line.style.opacity=1;if(markFn)mg.innerHTML=markFn(i);showTip(e,tipHtml(i));});
+  cap.addEventListener('mouseleave',()=>{line.style.opacity=0;mg.innerHTML='';hideTip();});
+  if(onClick)cap.addEventListener('click',e=>onClick(idx(e)));}
+function stackedArea(el,rows,keys,colors,pctMode,onclick){const W=900,H=250,pl=42,pb=30,pt=10,pr=12,iw=W-pl-pr,ih=H-pt-pb,n=rows.length;
+  const NM={A:'Ativo',P:'Pré-Churn',C:'Churn'};const tot=r=>keys.reduce((a,k)=>a+(r[k]||0),0);const max=pctMode?1:Math.max(1,...rows.map(tot));const X=i=>pl+iw*i/Math.max(1,n-1),Y=v=>pt+ih-ih*v/max;let g='';
+  for(let t=0;t<=4;t++){const y=pt+ih-ih*t/4;g+=`<line class="gridln" x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}"/><text class="axis" x="${pl-6}" y="${y+3}" text-anchor="end">${pctMode?(t*25+'%'):fmtInt(max*t/4)}</text>`;}
+  let base=rows.map(()=>0);keys.forEach((k,ki)=>{const top=rows.map((r,i)=>{const d=pctMode?(tot(r)?(r[k]||0)/tot(r):0):(r[k]||0);return base[i]+d;});let d='M'+X(0)+' '+Y(base[0]);for(let i=0;i<n;i++)d+=' L'+X(i)+' '+Y(top[i]);for(let i=n-1;i>=0;i--)d+=' L'+X(i)+' '+Y(base[i]);d+='Z';g+=`<path d="${d}" fill="${colors[ki]}" fill-opacity="0.82" stroke="${colors[ki]}" stroke-width="1"/>`;base=top;});
+  let ly=null;rows.forEach((r,i)=>{const y=r.mes.slice(0,4);if(y!==ly){ly=y;g+=`<text class="axis" x="${X(i)}" y="${H-10}" text-anchor="middle">${y}</text>`;}});
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+  wireHover(el,{n,X,pt,ih,tipHtml:i=>`<b>${rows[i].mes}</b><br>${keys.map(k=>NM[k]+': '+fmtInt(rows[i][k]||0)).join('<br>')}${onclick?'<br><span style="color:var(--muted)">clique: quem entrou em churn</span>':''}`,onClick:onclick?i=>onclick(rows[i].mes):null,markFn:i=>{let s=0;return keys.map((k,ki)=>{const v=pctMode?(tot(rows[i])?(rows[i][k]||0)/tot(rows[i]):0):(rows[i][k]||0);s+=v;return `<circle cx="${X(i)}" cy="${Y(s)}" r="3.5" fill="${colors[ki]}" stroke="var(--bg)" stroke-width="1.5"/>`;}).join('');}});}
+function linesChart(el,rows,series,onclick){const W=900,H=230,pl=42,pb=30,pt=10,pr=12,iw=W-pl-pr,ih=H-pt-pb,n=rows.length;
+  const max=Math.max(1,...rows.flatMap(r=>series.map(s=>r[s.key]||0)));const X=i=>pl+iw*i/Math.max(1,n-1),Y=v=>pt+ih-ih*v/max;let g='';
+  for(let t=0;t<=4;t++){const y=pt+ih-ih*t/4;g+=`<line class="gridln" x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}"/><text class="axis" x="${pl-6}" y="${y+3}" text-anchor="end">${fmtInt(max*t/4)}</text>`;}
+  series.forEach(s=>{let d='';rows.forEach((r,i)=>{d+=(i?' L':'M')+X(i)+' '+Y(r[s.key]||0);});g+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2"/>`;});
+  let ly=null;rows.forEach((r,i)=>{const y=r.mes.slice(0,4);if(y!==ly){ly=y;g+=`<text class="axis" x="${X(i)}" y="${H-10}" text-anchor="middle">${y}</text>`;}});
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+  wireHover(el,{n,X,pt,ih,tipHtml:i=>`<b>${rows[i].mes}</b><br>${series.map(s=>s.label+': '+fmtInt(rows[i][s.key]||0)).join('<br>')}`,onClick:onclick?()=>onclick():null,markFn:i=>series.map(s=>`<circle cx="${X(i)}" cy="${Y(rows[i][s.key]||0)}" r="4" fill="${s.color}" stroke="var(--bg)" stroke-width="1.5"/>`).join('')});}
+function donut(el,items,onclick){const t=items.reduce((a,i)=>a+i.value,0)||1,R=58,r=36,cx=68,cy=68;let a0=-Math.PI/2,g='';
+  items.forEach(it=>{const f=it.value/t;let a1=a0+f*2*Math.PI;if(f>=0.999)a1=a0+2*Math.PI-0.001;const la=f>0.5?1:0;
+    g+=`<path class="${onclick?'clickable':''}" data-cat="${it.cat||''}" d="M${cx+R*Math.cos(a0)} ${cy+R*Math.sin(a0)} A${R} ${R} 0 ${la} 1 ${cx+R*Math.cos(a1)} ${cy+R*Math.sin(a1)} L${cx+r*Math.cos(a1)} ${cy+r*Math.sin(a1)} A${r} ${r} 0 ${la} 0 ${cx+r*Math.cos(a0)} ${cy+r*Math.sin(a0)} Z" fill="${it.color}" data-tip="${it.name}: ${fmtInt(it.value)} (${(100*f).toFixed(0)}%)"/>`;a0=a1;});
+  g+=`<text x="${cx}" y="${cy-2}" text-anchor="middle" style="fill:var(--ink);font-size:15px;font-weight:800">${fmtInt(t)}</text><text x="${cx}" y="${cy+12}" text-anchor="middle" class="axis">ocorr.</text>`;
+  el.innerHTML=`<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><svg viewBox="0 0 136 136" style="width:136px;flex:none">${g}</svg><div class="legend" style="flex-direction:column;gap:8px">${items.map(i=>`<span><i style="background:${i.color}"></i>${i.name} <b class="tnum" style="color:var(--ink)">${(100*i.value/t).toFixed(0)}%</b></span>`).join('')}</div></div>`;
+  bindTips(el);if(onclick)el.querySelectorAll('[data-cat]').forEach(nd=>nd.onclick=()=>onclick(nd.dataset.cat));}
+function motivoCounts(recs){const m={};recs.forEach(r=>(r.m||[]).forEach(x=>m[x]=(m[x]||0)+1));return m;}
+function catCounts(recs){const c={fin:0,rel:0,prod:0,neg:0};recs.forEach(r=>(r.m||[]).forEach(x=>c[CAT[x]||'neg']++));return c;}
+function stCls(s){return s==='Ativo'?'st-a':s==='Churn'?'st-c':'st-p';}
+
+let sortKey='churn',sortDir=-1;
+function render(){
+  const recs=filtered();const gmv=recs.reduce((a,r)=>a+gmvOf(r),0);
+  const stLbl=state.status==='ambos'?'em risco (churn+pré)':(state.status==='Pré-Churn'?'em pré-churn':'em churn');
+  document.getElementById('kProdLbl').firstChild.textContent='Produtores '+stLbl+' ';
+  document.getElementById('drawerCnt').textContent=fmtInt(recs.length);
+  document.getElementById('kProd').textContent=fmtInt(recs.length);
+  const com=recs.filter(r=>r.b==='com').length,sem=recs.length-com;
+  const subF=(state.cluster.size||state.safra.size||state.gestor||state.motivo);
+  const blkBase=state.bloco?DATA.blocks[state.bloco].base:(DATA.blocks.com.base+DATA.blocks.sem.base);
+  const blkLbl=state.bloco?(state.bloco==='com'?'com gestor':'Sem Gestor TMB'):'CS (Relacionamento)';
+  if(subF){document.getElementById('kProdSub').innerHTML=`recorte filtrado · base do bloco <b>${blkLbl}</b>: ${fmtInt(blkBase)} · <span style="color:var(--com)">■</span>${fmtInt(com)} · <span style="color:var(--sem)">■</span>${fmtInt(sem)}`;}
+  else{const rt=(100*recs.length/blkBase).toFixed(1).replace('.',',');document.getElementById('kProdSub').innerHTML=`de <b>${fmtInt(blkBase)}</b> da base ${blkLbl} (<b>${rt}%</b>)`+(state.bloco?'':` · <span style="color:var(--com)">■</span>${fmtInt(com)} com gestor · <span style="color:var(--sem)">■</span>${fmtInt(sem)} sem`);}
+  let rate,rsub;if(state.bloco){rate=DATA.blocks[state.bloco].rate;rsub=(state.bloco==='com'?'com gestor':'Sem Gestor TMB')+' · base '+fmtInt(DATA.blocks[state.bloco].base);}
+  else{const tc=DATA.blocks.com.churn+DATA.blocks.sem.churn,tb=DATA.blocks.com.base+DATA.blocks.sem.base;rate=(100*tc/tb).toFixed(1);rsub='base CS total '+fmtInt(tb);}
+  document.getElementById('kRate').textContent=pct(rate);document.getElementById('kRateSub').textContent=rsub;
+  const wm=recs.filter(r=>(r.m||[]).length).length;
+  document.getElementById('kCov').textContent=recs.length?pct((100*wm/recs.length).toFixed(1)):'—';
+  document.getElementById('kCovSub').textContent=fmtInt(wm)+' de '+fmtInt(recs.length);
+  document.getElementById('kGmv').textContent=fmtBRL(gmv);
+  document.getElementById('kGmvSub').textContent='lente: '+LENS_NAME[state.lens];
+  document.getElementById('kGmvLbl').firstChild.textContent=(state.lens==='gt'?'GMV total histórico ':'GMV em risco ');
+
+  const bc=b=>{const d=DATA.blocks[b],col=b==='com'?'var(--com)':'var(--sem)',nm=b==='com'?'Com gestor':'Sem Gestor TMB (coletivo)';const g=churnRecs.filter(r=>r.b===b).reduce((a,r)=>a+gmvOf(r),0);
+    return `<div class="bc" data-b="${b}"><h3><span class="dot" style="background:${col}"></span>${nm}</h3><div class="big" style="color:${col}">${pct(d.rate)}</div><div class="meta">taxa de churn · ${fmtInt(d.churn)} de ${fmtInt(d.base)}</div><div class="meta" style="margin-top:8px">Causa documentada <b style="color:var(--ink)">${pct(d.cov)}</b> · GMV risco <b class="accent-fin">${fmtBRL(g)}</b></div></div>`;};
+  document.getElementById('blockComp').innerHTML=bc('sem')+bc('com');
+  document.querySelectorAll('.bc').forEach(n=>n.onclick=()=>setBloco(n.dataset.b));
+
+  const fkey=state.bloco||'todos';const frows=DATA.status_flow[fkey];
+  stackedArea(document.getElementById('chFlow'),frows,['A','P','C'],['var(--st-a)','var(--st-p)','var(--st-c)'],state.flowMode==='pct',mes=>{const rs=churnRecs.filter(r=>r.cm===mes&&(!state.bloco||r.b===state.bloco));openDrawer(rs,'Entraram em churn em '+mes+(state.bloco?' · '+(state.bloco==='com'?'Com gestor':'Sem Gestor TMB'):''));});
+  const last=frows[frows.length-1];
+  document.getElementById('flowNote').innerHTML=`Base ${fkey==='todos'?'CS':(fkey==='com'?'com gestor':'Sem Gestor TMB')} em ${last.mes}: ${fmtInt(last.A)} ativos · ${fmtInt(last.P)} pré-churn · <b style="color:var(--st-c)">${fmtInt(last.C)} churn</b>. Série sobre o universo CS (5.310) e reflete só o filtro de <b>bloco</b> — não cluster/safra/motivo.`;
+
+  const rr=DATA.recovery;const openBlk=()=>openDrawer(filtered(churnRecs),'Churn'+(state.bloco?' · '+(state.bloco==='com'?'Com gestor':'Sem Gestor TMB'):''));
+  if(state.recMode==='blk'){document.getElementById('recLegend').innerHTML='<span><i style="background:var(--sem)"></i>Sem Gestor TMB</span><span><i style="background:var(--com)"></i>Com gestor</span>';
+    linesChart(document.getElementById('chRecovery'),rr,[{key:'sem',label:'Sem Gestor TMB',color:'var(--sem)'},{key:'com',label:'Com gestor',color:'var(--com)'}],openBlk);}
+  else{document.getElementById('recLegend').innerHTML='<span><i style="background:var(--good)"></i>Plena (Churn→Ativo)</span><span><i style="background:var(--warn)"></i>Leve (Pré→Ativo)</span>';
+    linesChart(document.getElementById('chRecovery'),rr,[{key:'full',label:'Plena',color:'var(--good)'},{key:'light',label:'Leve',color:'var(--warn)'}],openBlk);}
+  const l6=rr.slice(-6),p6=rr.slice(-12,-6),s6=l6.reduce((a,r)=>a+r.full+r.light,0),sp=p6.reduce((a,r)=>a+r.full+r.light,0),tr=sp?((s6-sp)/sp*100):0;
+  document.getElementById('recNote').innerHTML=`Últimos 6 meses: <b>${fmtInt(s6)}</b> reativações (${fmtInt(l6.reduce((a,r)=>a+r.full,0))} plenas · ${fmtInt(l6.reduce((a,r)=>a+r.light,0))} leves) vs. 6 meses anteriores <b style="color:${tr>=0?'var(--good)':'var(--crit)'}">${tr>=0?'▲':'▼'} ${Math.abs(tr).toFixed(0)}%</b>. Métrica agregada de transições (não filtra por cluster/safra/motivo).`;
+
+  const cc=CLUS.map(cl=>{const s=recs.filter(r=>r.c===cl);return{name:cl,com:s.filter(r=>r.b==='com').length,sem:s.filter(r=>r.b==='sem').length,gmv:s.reduce((a,r)=>a+gmvOf(r),0)};});
+  groupedBars(document.getElementById('chClusterCount'),cc,[{key:'sem',label:'Sem Gestor TMB',color:'var(--sem)'},{key:'com',label:'Com gestor',color:'var(--com)'}],c=>drillCluster(c));
+  hbars(document.getElementById('chClusterGmv'),cc.map(c=>({name:c.name,value:c.gmv,color:CLUS_COLOR[c.name],cl:c.name})),{fmt:fmtBRL,onclick:i=>drillCluster(i.cl),tip:i=>i.name+': '+fmtR(i.value)});
+  document.getElementById('clGmvSub').textContent='lente: '+LENS_NAME[state.lens]+' · R$ · clique numa barra';
+  const rho=cc.find(c=>c.name==='Rhodium');document.getElementById('whaleNote').innerHTML=rho?`🐋 <b>Rhodium</b>: ${fmtInt(rho.com+rho.sem)} produtores = <b class="accent-fin">${fmtBRL(rho.gmv)}</b> — maior GMV por cabeça. Poucos whales, risco desproporcional.`:'';
+
+  const mc=motivoCounts(recs);const mit=Object.entries(mc).map(([k,v])=>({name:k,value:v,color:CAT_COLOR[CAT[k]||'neg'],mot:k})).sort((a,b)=>b.value-a.value);
+  hbars(document.getElementById('chMotivos'),mit,{fmt:fmtInt,onclick:i=>openDrawer(filtered().filter(r=>(r.m||[]).includes(i.mot)),'Motivo: '+i.mot),tip:i=>`${i.name} · ${CAT_NAME[CAT[i.name]||'neg']} · ${i.value} ocorrências`});
+  document.getElementById('motSub').textContent=`${fmtInt(wm)} produtores documentados · ${mit.reduce((a,i)=>a+i.value,0)} ocorrências · cor = categoria · clique p/ ver`;
+  const cat=catCounts(recs);const ci=Object.entries(cat).filter(([k,v])=>v>0).map(([k,v])=>({name:CAT_NAME[k],value:v,color:CAT_COLOR[k],cat:k}));
+  donut(document.getElementById('chCategoria'),ci,c=>openDrawer(filtered().filter(r=>(r.m||[]).some(x=>(CAT[x]||'neg')===c)),'Categoria: '+CAT_NAME[c]));
+  const tt=cat.fin+cat.rel+cat.prod+cat.neg;document.getElementById('hipoteseNote').innerHTML=tt?`Hipótese do time (inadimplência + falta de caixa): <b style="color:var(--fin)">Financeiro/Crédito = ${(100*cat.fin/tt).toFixed(0)}%</b> das ocorrências — a maior fatia, confirmando a prioridade nº 1.`:'Sem motivos no filtro.';
+
+  computeFin(recs,gmv);renderActions(recs,cat);renderGTable();bindTips();
+}
+
+function computeFin(recs,gmv){
+  const rec=(+inRec.value||0)/100,ticket=+inTicket.value||1,ant=(+inAnt.value||0)/100,upt=(+inUpt.value||0)/100;
+  const tot=recs.reduce((a,r)=>a+r.gt,0),u12=recs.reduce((a,r)=>a+r.g12,0),pk=recs.reduce((a,r)=>a+r.pk,0);
+  const receita=gmv*rec,op=gmv/ticket,antec=gmv*ant*upt,perda=receita+op+antec;
+  fGmv.textContent=fmtBRL(gmv);fGmvH.textContent=LENS_NAME[state.lens];fRec.textContent=fmtBRL(receita);fOp.textContent=fmtBRL(op);fAnt.textContent=fmtBRL(antec);
+  const anoTxt=state.lens==='gt'?'embutida no histórico (não anualizável)':'estimada por ano';
+  document.getElementById('finHeadline').innerHTML=`Os <b>${fmtInt(recs.length)}</b> produtores do filtro já venderam <b class="accent-fin">${fmtBRL(tot)}</b> na TMB (total histórico), sendo <b>${fmtBRL(u12)}</b> nos últimos 12 meses; rodavam a <b>${fmtBRL(pk)}</b>/ano no pico. <b>Perda de receita ${anoTxt}: ${fmtBRL(perda)}</b> = receita (${pct(+inRec.value)}) + operação (R$1/boleto) + antecipação, sobre a lente <i>${LENS_NAME[state.lens]}</i>.`;
+  const segF=r=>(!state.cluster.size||state.cluster.has(r.c))&&(!state.safra.size||state.safra.has(String(r.y)))&&(!state.gestor||r.g===state.gestor)&&(!state.motivo||(r.m||[]).includes(state.motivo));
+  const cCom=churnRecs.filter(r=>r.b==='com'&&segF(r)),cSem=churnRecs.filter(r=>r.b==='sem'&&segF(r));
+  const gCom=cCom.reduce((a,r)=>a+gmvOf(r),0),gSem=cSem.reduce((a,r)=>a+gmvOf(r),0);
+  document.getElementById('recComMax').textContent=fmtInt(cCom.length);document.getElementById('recSemMax').textContent=fmtInt(cSem.length);
+  const qtd=(state.recSimMode==='qtd');let nCom,nSem,pCom,pSem;
+  if(qtd){nCom=Math.min(cCom.length,Math.max(0,Math.round(+recComN.value||0)));nSem=Math.min(cSem.length,Math.max(0,Math.round(+recSemN.value||0)));pCom=cCom.length?nCom/cCom.length:0;pSem=cSem.length?nSem/cSem.length:0;}
+  else{pCom=Math.min(100,Math.max(0,+recComN.value||0))/100;pSem=Math.min(100,Math.max(0,+recSemN.value||0))/100;nCom=Math.round(cCom.length*pCom);nSem=Math.round(cSem.length*pSem);}
+  const gmvR=gCom*pCom+gSem*pSem,recR=gmvR*rec,opR=gmvR/ticket,antR=gmvR*ant*upt;
+  const segTxt=(state.cluster.size||state.safra.size||state.gestor||state.motivo)?' (recorte filtrado)':'';
+  document.getElementById('simOut').innerHTML=`Recuperando <b style="color:var(--com)">${fmtInt(nCom)}</b> (${(pCom*100).toFixed(0)}%) com gestor e <b style="color:var(--sem)">${fmtInt(nSem)}</b> (${(pSem*100).toFixed(0)}%) Sem Gestor TMB${segTxt} → devolve <b>${fmtBRL(gmvR)}</b> de GMV${ANO()} → <b>${fmtBRL(recR+opR+antR)}</b> de receita total${ANO()} (${fmtBRL(recR)} juros+adm · ${fmtBRL(opR)} operação · ${fmtBRL(antR)} antecipação). <span style="color:var(--muted)">Base em churn: ${fmtInt(cCom.length)} com gestor · ${fmtInt(cSem.length)} Sem Gestor TMB. Assume GMV médio por produtor.</span>`;
+}
+function renderActions(recs,cat){const tt=(cat.fin+cat.rel+cat.prod+cat.neg)||1;const ht=recs.filter(r=>r.c==='Titanium'||r.c==='Rhodium');const htG=ht.reduce((a,r)=>a+gmvOf(r),0);const inad=recs.filter(r=>(r.m||[]).includes('Inadimplência Alta')).length;
+  const acts=[{t:'tag-fin',n:'Fluxo de Caixa',h:'Simulador de fluxo + fluxo de caixa vivo',p:'Desenho da Lari: viés na entrada com simulador de fluxo, e fluxo de caixa quando já roda. Ataca receber parcelado sem antecipação.',i:`Endereça <b>${(100*cat.fin/tt).toFixed(0)}%</b> dos motivos (Financeiro/Crédito).`},
+   {t:'tag-fin',n:'Cobrança',h:'Relatório de cobrança transparente',p:'Detalha os planos de ação da cobrança e o que a TMB faz p/ recuperar receita — viés “você vende mais mesmo com inadimplência maior”.',i:`<b>${fmtInt(inad)}</b> churnados citam Inadimplência (motivo nº 1).`},
+   {t:'tag-prod',n:'Motor de Risco',h:'Motor de risco (High Ticket)',p:'Produtor escolhe o bloqueio por score do aluno: agressivo, moderado (trava ≤200) ou conservador (trava ≤600). Foco high ticket.',i:`Protege <b>${fmtBRL(htG)}</b> de GMV Titanium+Rhodium (${fmtBRL(lossOf(htG))} de receita${ANO()}).`,link:'#ht-top'}];
+  document.getElementById('actions').innerHTML=acts.map(a=>`<div class="act"><span class="tag ${a.t}">${a.n}</span><h3>${a.h}</h3><p>${a.p}</p><div class="impact">${a.i}${a.link?` <a href="${a.link}" style="display:inline-block;margin-top:8px;color:var(--cyan);font-weight:700;text-decoration:none">→ Ver estudo completo de inadimplência High Ticket</a>`:''}</div></div>`).join('');}
+function gmvByGestor(nome){return churnRecs.filter(r=>nome==='Sem Gestor TMB'?r.b==='sem':r.g===nome).reduce((a,r)=>a+gmvOf(r),0);}
+function renderGTable(){const rows=[...DATA.gestores];rows.sort((a,b)=>{let x=a[sortKey],y=b[sortKey];if(sortKey==='gmv'){x=gmvByGestor(a.nome);y=gmvByGestor(b.nome);}if(sortKey==='top'){x=(a.top[0]||{}).m||'';y=(b.top[0]||{}).m||'';}return typeof x==='string'?sortDir*x.localeCompare(y):sortDir*(x-y);});
+  const cp=c=>c>=70?'g':c>=40?'w':'c';
+  const body=rows.map(g=>`<tr class="clickable" data-g="${g.nome}"><td>${g.nome}</td><td class="tnum">${fmtInt(g.base)}</td><td class="tnum">${fmtInt(g.churn)}</td><td class="tnum">${pct(g.rate)}</td><td class="tnum">${fmtInt(g.doc)}</td><td><span class="pill ${cp(g.cov)}">${pct(g.cov)}</span></td><td class="tnum accent-fin">${fmtBRL(gmvByGestor(g.nome))}</td><td style="text-align:left;color:var(--ink2)">${(g.top[0]||{}).m||'—'}${g.top[0]?` (${g.top[0].n})`:''}</td></tr>`).join('');
+  const s=DATA.blocks.sem;const semRow=`<tr class="clickable" data-g="Sem Gestor TMB" style="background:rgba(255,122,89,.07)"><td><span class="dot" style="background:var(--sem)"></span> Sem Gestor TMB (coletivo)</td><td class="tnum">${fmtInt(s.base)}</td><td class="tnum">${fmtInt(s.churn)}</td><td class="tnum">${pct(s.rate)}</td><td class="tnum">${fmtInt(s.doc)}</td><td><span class="pill c">${pct(s.cov)}</span></td><td class="tnum accent-fin">${fmtBRL(gmvByGestor('Sem Gestor TMB'))}</td><td style="text-align:left;color:var(--ink2)">Inadimplência Alta</td></tr>`;
+  document.querySelector('#gTable tbody').innerHTML=semRow+body;
+  document.querySelectorAll('#gTable tbody tr').forEach(n=>n.onclick=()=>{const gn=n.dataset.g;openDrawer(churnRecs.filter(r=>gn==='Sem Gestor TMB'?r.b==='sem':r.g===gn),'Churn · '+gn);});
+  document.querySelectorAll('#gTable th').forEach(th=>th.classList.toggle('sorted',th.dataset.k===sortKey));
+  document.querySelectorAll('#gTable th').forEach(th=>{th.textContent=th.textContent.replace(/ [▲▼]$/,'');if(th.dataset.k===sortKey)th.textContent+=sortDir<0?' ▼':' ▲';});}
+
+let dwRecs=[],dwSort='pk',dwDir=-1;
+function drillCluster(cl){openDrawer(filtered().filter(r=>r.c===cl),(state.status==='ambos'?'':state.status+' · ')+'Cluster '+cl+(state.bloco?' · '+(state.bloco==='com'?'Com gestor':'Sem Gestor TMB'):''));}
+function openDrawer(recs,title){dwRecs=recs;document.getElementById('dwTitle').textContent=title||'Produtores';document.getElementById('dwSearch').value='';renderDrawer();document.getElementById('overlay').classList.add('on');document.getElementById('drawer').classList.add('on');}
+function closeDrawer(){document.getElementById('overlay').classList.remove('on');document.getElementById('drawer').classList.remove('on');}
+function renderDrawer(){const q=document.getElementById('dwSearch').value.trim().toLowerCase();let rs=dwRecs.filter(r=>!q||(''+r.id).includes(q)||(r.nm||'').toLowerCase().includes(q));
+  rs=rs.map(r=>({...r,loss:lossOf(gmvOf(r))}));
+  rs.sort((a,b)=>{let x=a[dwSort],y=b[dwSort];if(dwSort==='m'){x=(a.m||[]).join();y=(b.m||[]).join();}return typeof x==='string'?dwDir*(''+x).localeCompare(''+y):dwDir*((x||0)-(y||0));});
+  document.getElementById('dwCnt').textContent=fmtInt(rs.length)+' produtores';const cap=rs.slice(0,800);
+  document.querySelector('#dwTable tbody').innerHTML=cap.map(r=>`<tr><td class="tnum">${r.id}</td><td style="text-align:left;max-width:210px;white-space:normal;color:var(--ink)">${r.nm||'—'}</td><td><span style="color:${r.b==='com'?'var(--com)':'var(--sem)'}">●</span></td><td>${r.g}</td><td>${r.c}</td><td class="tnum">${r.y||'—'}</td><td><span class="stbadge ${stCls(r.st)}">${r.st}</span></td><td class="tnum">${fmtR(r.gt)}</td><td class="tnum">${fmtR(r.g12)}</td><td class="tnum">${fmtR(r.pk)}</td><td class="tnum accent-fin">${fmtR(r.loss)}</td><td class="tnum">${r.ls||'—'}</td><td style="text-align:left;color:var(--ink2);max-width:180px;white-space:normal">${(r.m||[]).join('; ')||'—'}</td></tr>`).join('');
+  const tg=rs.reduce((a,r)=>a+r.gt,0),tl=rs.reduce((a,r)=>a+r.loss,0);
+  document.getElementById('dwSum').innerHTML=`<span>GMV total histórico: <b>${fmtR(tg)}</b></span><span>Perda projetada${ANO()}: <b class="accent-fin">${fmtR(tl)}</b></span>${rs.length>800?'<span>mostrando 800 de '+fmtInt(rs.length)+'</span>':''}`;
+  document.querySelectorAll('#dwTable th').forEach(th=>{th.classList.toggle('sorted',th.dataset.k===dwSort);th.textContent=th.textContent.replace(/ [▲▼]$/,'');if(th.dataset.k===dwSort)th.textContent+=dwDir<0?' ▼':' ▲';});}
+
+function setBloco(b){state.bloco=b;document.querySelectorAll('#segBloco button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===b));render();syncActive();}
+function syncActive(){const p=[];if(state.bloco)p.push(state.bloco==='com'?'Com gestor':'Sem Gestor TMB');if(state.status!=='Churn')p.push(state.status==='ambos'?'churn+pré':state.status);if(state.cluster.size)p.push([...state.cluster].join(', '));if(state.safra.size)p.push('safra '+[...state.safra].join('/'));if(state.gestor)p.push(state.gestor);if(state.motivo)p.push(state.motivo);document.getElementById('activeNote').innerHTML=p.length?('Filtros: <b>'+p.join('</b> · <b>')+'</b>'):'';}
+function build(){
+  document.getElementById('fCluster').innerHTML=CLUS.map(c=>`<button class="fchip" data-v="${c}" aria-pressed="false">${c}</button>`).join('');
+  const anos=[...new Set(DATA.records.map(r=>r.y).filter(Boolean))].sort();
+  document.getElementById('fSafra').innerHTML=anos.map(a=>`<button class="fchip" data-v="${a}" aria-pressed="false">${a}</button>`).join('');
+  document.getElementById('fGestor').innerHTML='<option value="">Todos</option>'+DATA.gestores.map(g=>`<option>${g.nome}</option>`).join('')+'<option>Sem Gestor TMB</option>';
+  const allM=[...new Set(DATA.records.flatMap(r=>r.m||[]))].sort();
+  document.getElementById('fMotivo').innerHTML='<option value="">Todos</option>'+allM.map(m=>`<option>${m}</option>`).join('');
+  document.querySelectorAll('#segBloco button').forEach(b=>b.onclick=()=>setBloco(b.dataset.v));
+  document.querySelectorAll('#segStatus button').forEach(b=>b.onclick=()=>{state.status=b.dataset.v;document.querySelectorAll('#segStatus button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===state.status));render();syncActive();});
+  document.querySelectorAll('#segLens button').forEach(b=>b.onclick=()=>{state.lens=b.dataset.v;document.querySelectorAll('#segLens button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===state.lens));render();});
+  document.querySelectorAll('#fCluster .fchip').forEach(c=>c.onclick=()=>{tog(state.cluster,c.dataset.v,c);render();syncActive();});
+  document.querySelectorAll('#fSafra .fchip').forEach(c=>c.onclick=()=>{tog(state.safra,c.dataset.v,c);render();syncActive();});
+  document.getElementById('fGestor').onchange=e=>{state.gestor=e.target.value;if(state.gestor==='Sem Gestor TMB')setBloco('sem');else if(state.gestor)setBloco('com');else render();syncActive();};
+  document.getElementById('fMotivo').onchange=e=>{state.motivo=e.target.value;render();syncActive();};
+  document.getElementById('resetBtn').onclick=()=>{state.bloco='';state.status='Churn';state.cluster.clear();state.safra.clear();state.gestor='';state.motivo='';fGestor.value='';fMotivo.value='';document.querySelectorAll('.fchip').forEach(c=>c.setAttribute('aria-pressed','false'));document.querySelectorAll('#segBloco button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===''));document.querySelectorAll('#segStatus button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v==='Churn'));render();syncActive();};
+  ['inRec','inTicket','inAnt','inUpt'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+  const recRefresh=()=>computeFin(filtered(),filtered().reduce((a,r)=>a+gmvOf(r),0));
+  ['recComN','recSemN'].forEach(id=>document.getElementById(id).addEventListener('input',recRefresh));
+  document.querySelectorAll('#recModeSeg button').forEach(b=>b.onclick=()=>{state.recSimMode=b.dataset.m;document.querySelectorAll('#recModeSeg button').forEach(x=>x.setAttribute('aria-pressed',x===b));var q=state.recSimMode==='qtd';document.getElementById('recComUnit').textContent=q?'(nº produtores)':'(% da base)';document.getElementById('recSemUnit').textContent=q?'(nº produtores)':'(% da base)';document.getElementById('recComN').value=q?20:15;document.getElementById('recSemN').value=q?200:10;recRefresh();});
+  flowAbs.onclick=()=>{state.flowMode='abs';flowAbs.setAttribute('aria-pressed',true);flowPct.setAttribute('aria-pressed',false);render();};
+  flowPct.onclick=()=>{state.flowMode='pct';flowPct.setAttribute('aria-pressed',true);flowAbs.setAttribute('aria-pressed',false);render();};
+  recBlk.onclick=()=>{state.recMode='blk';recBlk.setAttribute('aria-pressed',true);recTipo.setAttribute('aria-pressed',false);render();};
+  recTipo.onclick=()=>{state.recMode='tipo';recTipo.setAttribute('aria-pressed',true);recBlk.setAttribute('aria-pressed',false);render();};
+  document.getElementById('openDrawerBtn').onclick=()=>openDrawer(filtered(),'Produtores '+(state.status==='ambos'?'em risco':state.status)+(state.bloco?' · '+(state.bloco==='com'?'Com gestor':'Sem Gestor TMB'):''));
+  document.getElementById('kpiProd').onclick=()=>openDrawer(filtered(),'Produtores '+(state.status==='ambos'?'em risco':state.status));
+  document.getElementById('kpiGmv').onclick=()=>openDrawer(filtered(),'GMV em risco · produtores');
+  document.getElementById('kpiCov').onclick=()=>openDrawer(filtered().filter(r=>!(r.m||[]).length),'Sem causa documentada');
+  document.getElementById('dwClose').onclick=closeDrawer;document.getElementById('overlay').onclick=closeDrawer;
+  document.getElementById('dwSearch').oninput=renderDrawer;
+  document.querySelectorAll('#dwTable th').forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(dwSort===k)dwDir*=-1;else{dwSort=k;dwDir=(k==='id'||k==='nm'||k==='m'||k==='g'||k==='c'||k==='st')?1:-1;}renderDrawer();});
+  document.querySelectorAll('#gTable th').forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=-1;}renderGTable();});
+}
+function tog(set,v,el){if(set.has(v)){set.delete(v);el.setAttribute('aria-pressed','false');}else{set.add(v);el.setAttribute('aria-pressed','true');}}
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);document.getElementById('brandLogo').src=t==='light'?LOGO_DARK:LOGO_WHITE;}
+document.getElementById('themeBtn').onclick=()=>{applyTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light');render();};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
+document.getElementById('refMes').textContent=DATA.ref;
+document.getElementById('foot').innerHTML=`<p><b>Proveniência.</b> GMV e métricas financeiras vêm do <b>Metabase</b> (card 189, “Soma de Valor Principal”), somadas <b>por produtor via Código</b> — mesma chave do HubSpot (<code>codigo_produtor</code>). Churn = Status do fVendas: >121 dias sem vender. Blocos: HubSpot pipeline CS <b>842108729</b> — Sem Gestor TMB = owner coletivo (88240459); com gestor = 10 owners nomeados. <span class="prov real">real</span></p>
+<p><b>Lentes de GMV.</b> Total histórico = tudo já vendido (estoque, não anualizável). Últimos 12m = fecho recente. Pico 12m = melhor janela de 12m (run-rate anual, default do risco — churnado tem 12m recente ≈ 0). Rótulos “/ano” só valem para Pico 12m e Últimos 12m. <b>Perda</b> = GMV da lente × (receita + operação R$1/boleto + antecipação).</p>
+<p><b>A confirmar com o Levi/financeiro:</b> (1) se o card 189 já desconta cancelamentos (hoje tratado como Valor Principal efetivado, bruto); (2) se os 20% de receita e a antecipação incidem sobre bases distintas — se houver sobreposição, não somar as duas. <b>Uso interno:</b> a gaveta traz código + nome do produtor (Metabase) + métricas — estático, sem API. Não compartilhar fora da TMB. Cobertura de motivo hoje = só 7,6% do churn tem causa documentada; a base Sem Gestor TMB (4,2%) é o maior vazio.</p>`;
+applyTheme(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+build();render();bindTips();
+
+// ================= HIGH TICKET — MOTOR DE RISCO (seção isolada) =================
+const HT=__HT_DATA__;
+const htR=HT.records;
+const htState={cut:-1,blockSem:false,tipo:'',risco:'',safra:'',md:'',gen:'',brk:'por_safra',cmpDim:'s',comboDims:new Set(['g','s'])};
+function scoreBand(s){if(s==null)return 'Sem score';if(s<300)return '000-299';if(s<500)return '300-499';if(s<700)return '500-699';return '700-999';}
+const HTDIMS={s:{lbl:'Score',get:r=>scoreBand(r.s)},rk:{lbl:'Risco',get:r=>r.rk},t:{lbl:'Tipo',get:r=>r.t},md:{lbl:'Modalidade',get:r=>r.md},g:{lbl:'Gênero',get:r=>r.g},sf:{lbl:'Safra',get:r=>r.sf}};
+function htCatVals(dim){const set=[...new Set(htR.map(HTDIMS[dim].get))];const ord={s:['000-299','300-499','500-699','700-999','Sem score'],rk:['Alto','Médio','Baixo','N/I']};if(ord[dim])return ord[dim].filter(c=>set.includes(c));return set.sort();}
+const htFarol=f=>({'ALTO':'var(--st-c)','MEDIO':'var(--st-p)','MÉDIO':'var(--st-p)','BAIXO':'var(--st-a)'}[f]||'var(--muted)');
+const htP=v=>(v*100).toFixed(1).replace('.',',')+'%';
+function htAgg(rs){let gmv=0,v=0,w=0,x=0,y=0,rp=0;rs.forEach(r=>{gmv+=r.gmv;v+=r.rec;w+=r.ven;x+=r.atr;y+=r.agu;rp+=r.rp;});return {n:rs.length,gmv,v,w,x,y,rp,io:(w+v)?w/(w+v):0,fin:(w+x+v)?(w+x)/(w+x+v):0,ip:(w+rp+v)?(w+rp)/(w+rp+v):0};}
+function htStudy(){
+  const T=HT.totais;
+  htGmv.textContent=fmtBRL(T.gmv);htPed.textContent=fmtInt(T.ped)+' pedidos · '+fmtInt(T.parc)+' parcelas';
+  htIf.textContent=htP(T['if']);htIo.textContent=htP(T.io);htIp.textContent=htP(T.ip);
+  htRec.textContent=fmtBRL(T.rec);htRisco.textContent=fmtBRL(T.risco);
+  document.getElementById('htPerDe').textContent=HT.periodo.de;document.getElementById('htPerAte').textContent=HT.periodo.ate;document.getElementById('htPerSnap').textContent=HT.periodo.snapshot;
+  const agR=T.agu_risco||0, agS=(T.agu_saudavel!=null?T.agu_saudavel:(T.agu-agR));
+  const comp=[['Recebido',T.rec,'var(--st-a)','#03291a',''],['Vencido D+30',T.ven,'var(--st-c)','#fff',''],['Atrasado',T.atr,'var(--st-p)','#3a2b02',''],['Aguardando saudável',agS,'var(--cl-pal)','#04121f','parcelas a vencer de pedidos SEM atraso (tendência de pagamento normal)'],['Risco projetado (aguardando)',agR,'#9d2c4d','#fff','parcelas a vencer de pedidos que JÁ têm parcela vencida D+30 — provável não-pagamento']];
+  const tot=comp.reduce((a,c)=>a+c[1],0);
+  document.getElementById('htCompBar').innerHTML='<div style="display:flex;height:34px;border-radius:8px;overflow:hidden;gap:2px">'+comp.map(c=>`<div data-tip="${c[0]}: ${fmtR(c[1])} (${(100*c[1]/tot).toFixed(1).replace('.',',')}%)${c[4]?' — '+c[4]:''}" style="width:${100*c[1]/tot}%;background:${c[2]};display:flex;align-items:center;justify-content:center;font-size:11px;color:${c[3]};font-weight:700">${100*c[1]/tot>=5?(100*c[1]/tot).toFixed(0)+'%':''}</div>`).join('')+'</div><div class="legend" style="margin-top:8px">'+comp.map(c=>`<span><i style="background:${c[2]}"></i>${c[0]} ${fmtBRL(c[1])} · <b style="color:var(--ink)">${(100*c[1]/tot).toFixed(1).replace('.',',')}%</b></span>`).join('')+'</div>';
+  bindTips(document.getElementById('htCompBar'));
+  const met=[['Original (cobrança)',T.io,'Vencido D+30 ÷ (Vencido D+30 + Recebido)','Só parcelas vencidas há +30 dias contam como inadimplentes. É a régua histórica do time de cobrança da TMB — a mais conservadora.','var(--muted)'],
+   ['Financeira ★',T['if'],'(Vencido D+30 + Atrasado) ÷ (idem + Recebido)','Todo valor vencido (qualquer atraso) é inadimplente. Métrica-headline: a visão financeira do risco real hoje.','var(--sem)'],
+   ['Projetada (teto)',T.ip,'(Vencido D+30 + Risco) ÷ (idem + Recebido)','Cenário pessimista: um pedido que já tem ≥1 parcela vencida projeta que as próximas também não serão pagas (Risco = Atrasado + Aguardando desse pedido). É o TETO de inadimplência.','var(--crit)']];
+  document.getElementById('htMetodos').innerHTML=met.map((m,i)=>`<div class="ftile" ${i==1?'style="border-color:var(--sem);background:rgba(255,122,89,.06)"':''}><div class="l">${m[0]} <span class="info" tabindex="0" data-tip="${m[3]}">i</span></div><div class="v tnum" style="color:${m[4]}">${htP(m[1])}</div><div style="height:5px;border-radius:3px;background:rgba(255,255,255,.07);margin:8px 0 6px"><div style="width:${Math.min(100,m[1]*100).toFixed(0)}%;height:100%;border-radius:3px;background:${m[4]}"></div></div><div class="h">${m[2]}</div></div>`).join('');
+  bindTips(document.getElementById('htMetodos'));
+  const sc=HT.por_score.filter(r=>r.cat!=='TOTAL');
+  hbars(document.getElementById('htScore'),sc.map(r=>({name:r.cat,value:r['if']*100,color:htFarol(r.farol),r})),{max:55,fmt:v=>v.toFixed(1).replace('.',',')+'%',tip:i=>`<b>Score ${i.r.cat}</b> — farol ${i.r.farol}<br>${fmtInt(i.r.ped)} pedidos · GMV ${fmtBRL(i.r.gmv)}<br>Original ${htP(i.r.io)} · Financeira ${htP(i.r['if'])} · Projetada ${htP(i.r.ip)}`});
+  const b0=sc[0],b3=sc[3];
+  document.getElementById('htScoreNote').innerHTML=`Faixa <b>${b0.cat}</b>: <b style="color:var(--st-c)">${htP(b0['if'])}</b> de inadimplência (Fin.) vs <b style="color:var(--st-a)">${htP(b3['if'])}</b> na ${b3.cat} — score baixo prevê ~<b>${(b0['if']/b3['if']).toFixed(0)}×</b> mais inadimplência.`;
+  const rk=HT.por_risco.filter(r=>r.cat!=='TOTAL');
+  hbars(document.getElementById('htRiscoCh'),rk.map(r=>({name:r.cat,value:r['if']*100,color:htFarol(r.farol),r})),{max:55,fmt:v=>v.toFixed(1).replace('.',',')+'%',tip:i=>`<b>${i.r.cat}</b><br>${fmtInt(i.r.ped)} pedidos · GMV ${fmtBRL(i.r.gmv)}<br>Fin. ${htP(i.r['if'])} · Proj. ${htP(i.r.ip)}`});
+  htLineParc();htHeat();htBrkTabs();htBrk();
+  document.querySelector('#htTop tbody').innerHTML=HT.proj_top.slice(0,10).map(p=>`<tr><td>${p.prod}</td><td class="tnum">${htP(p.io)}</td><td class="tnum accent-crit">${htP(p.ip)}</td><td class="tnum accent-fin">${fmtBRL(p.ven)}</td></tr>`).join('');
+}
+function htLineParc(){const rows=HT.por_parcela.filter(r=>r.p<=12);const el=document.getElementById('htParcela');
+  const W=560,H=210,pl=42,pt=10,pb=26,pr=10,iw=W-pl-pr,ih=H-pt-pb,n=rows.length,max=0.7,X=i=>pl+iw*i/(n-1),Y=v=>pt+ih-ih*Math.min(v,max)/max;let g='';
+  for(let t=0;t<=4;t++){const yy=pt+ih-ih*t/4;g+=`<line class="gridln" x1="${pl}" y1="${yy}" x2="${W-pr}" y2="${yy}"/><text class="axis" x="${pl-6}" y="${yy+3}" text-anchor="end">${(max*t/4*100).toFixed(0)}%</text>`;}
+  [['io','var(--st-c)'],['if','var(--st-p)']].forEach(([k,c])=>{let d='';rows.forEach((r,i)=>{d+=(i?' L':'M')+X(i)+' '+Y(r[k]||0);});g+=`<path d="${d}" fill="none" stroke="${c}" stroke-width="2"/>`;rows.forEach((r,i)=>g+=`<circle cx="${X(i)}" cy="${Y(r[k]||0)}" r="2.5" fill="${c}"/>`);});
+  rows.forEach((r,i)=>{g+=`<text class="axis" x="${X(i)}" y="${H-8}" text-anchor="middle">${r.p}</text><rect x="${X(i)-iw/n/2}" y="${pt}" width="${iw/n}" height="${ih}" fill="transparent" data-tip="Parcela ${r.p} · Original ${htP(r.io||0)} · Financeira ${htP(r['if']||0)} · ${fmtInt(r.qtd)} parcelas"/>`;});
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;bindTips(el);}
+function heatColor(v){var t=Math.max(0,Math.min(1,v/0.6));var h=(1-t)*140;return 'hsl('+h.toFixed(0)+',68%,44%)';}  // 0%→verde · alto→vermelho
+function htHeat(){const C=HT.coorte,el=document.getElementById('htCoorte');
+  let h='<table style="border-collapse:separate;border-spacing:2px;font-size:10px;min-width:520px"><thead><tr><th style="text-align:left">Safra \\ Parc</th>'+C.parcelas.map(p=>`<th style="text-align:center;color:var(--muted)">${p}</th>`).join('')+'</tr></thead><tbody>';
+  C.linhas.forEach(row=>{h+=`<tr><td style="color:var(--ink2)">${row.safra}</td>`+row.vals.map(v=>{if(v==null)return '<td></td>';return `<td data-tip="${row.safra} · ${htP(v)}" style="text-align:center;background:${heatColor(v)};color:#fff;border-radius:3px;padding:3px 5px">${(v*100).toFixed(0)}</td>`;}).join('')+'</tr>';});
+  h+='</tbody></table>';
+  h+='<div class="legend" style="margin-top:8px;align-items:center"><span style="color:var(--muted)">escala:</span><span style="display:inline-flex;gap:2px">'+[0,0.12,0.24,0.36,0.5,0.6].map(x=>`<i style="width:22px;height:11px;border-radius:2px;background:${heatColor(x)}"></i>`).join('')+'</span><span style="color:var(--muted)">0% (bom) → ≥60% (crítico)</span></div>';
+  el.innerHTML=h;bindTips(el);}
+function htBrkTabs(){document.getElementById('htBrkTabs').innerHTML=[['por_safra','Safra'],['por_tipo','Tipo'],['por_genero','Gênero']].map(([k,l])=>`<button class="toolbtn" data-b="${k}" aria-pressed="${htState.brk===k}">${l}</button>`).join('');
+  document.querySelectorAll('#htBrkTabs button').forEach(b=>b.onclick=()=>{htState.brk=b.dataset.b;htBrkTabs();htBrk();});}
+function htBrk(){const arr=HT[htState.brk].filter(r=>r.cat!=='TOTAL');
+  hbars(document.getElementById('htBrk'),arr.map(r=>({name:r.cat,value:r['if']*100,color:htFarol(r.farol),r})),{max:60,fmt:v=>v.toFixed(1).replace('.',',')+'%',tip:i=>`<b>${i.r.cat}</b><br>${fmtInt(i.r.ped)} pedidos · GMV ${fmtBRL(i.r.gmv)}<br>Fin. ${htP(i.r['if'])}`});}
+function htCombosDims(){document.getElementById('htcbDims').innerHTML=Object.entries(HTDIMS).map(([k,v])=>`<button class="fchip" data-d="${k}" aria-pressed="${htState.comboDims.has(k)}">${v.lbl}</button>`).join('');
+  document.querySelectorAll('#htcbDims button').forEach(b=>b.onclick=()=>{const k=b.dataset.d;htState.comboDims.has(k)?htState.comboDims.delete(k):htState.comboDims.add(k);htCombosDims();htCombos();});}
+function htCombos(){const dims=[...htState.comboDims];const el=document.getElementById('htCombo');
+  if(!dims.length){el.innerHTML='<div class="note">Selecione ao menos uma dimensão acima para ver as combinações.</div>';return;}
+  const groups={};htR.forEach(r=>{const key=dims.map(d=>HTDIMS[d].get(r)).join('‖');(groups[key]=groups[key]||[]).push(r);});
+  let all=Object.entries(groups).map(([k,rs])=>({parts:k.split('‖'),a:htAgg(rs)})).filter(x=>x.a.n>=5).sort((a,b)=>b.a.gmv-a.a.gmv);
+  const total=all.length,rows=all.slice(0,30),max=0.6;
+  let h='<table style="font-size:11.5px;min-width:'+(dims.length*120+340)+'px"><thead><tr>'+dims.map(d=>`<th style="text-align:left">${HTDIMS[d].lbl}</th>`).join('')+'<th>Pedidos</th><th>GMV</th><th style="text-align:left;width:160px">Inad. Financeira</th></tr></thead><tbody>';
+  rows.forEach(x=>{const v=x.a.fin,t=Math.min(1,v/max);h+='<tr>'+x.parts.map(p=>`<td style="text-align:left;color:var(--ink)">${p}</td>`).join('')+`<td class="tnum">${fmtInt(x.a.n)}</td><td class="tnum accent-fin">${fmtBRL(x.a.gmv)}</td><td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:70px;height:12px;background:rgba(255,255,255,.05);border-radius:6px;overflow:hidden"><div style="width:${(v/max*100).toFixed(0)}%;height:100%;background:rgba(229,72,77,${(0.35+t*0.6).toFixed(2)});border-radius:6px"></div></div><span class="tnum" style="min-width:44px">${htP(v)}</span></div></td></tr>`;});
+  el.innerHTML=h+'</tbody></table>'+(total>30?`<div class="note">Mostrando as 30 maiores de ${total} combinações (por GMV).</div>`:'');bindTips(el);}
+function htCmpTabs(){document.getElementById('htCmpTabs').innerHTML=[['s','Score'],['sf','Safra'],['rk','Risco']].map(([k,l])=>`<button class="toolbtn" data-d="${k}" aria-pressed="${htState.cmpDim===k}">${l}</button>`).join('');document.querySelectorAll('#htCmpTabs button').forEach(b=>b.onclick=()=>{htState.cmpDim=b.dataset.d;htCmpTabs();htCmp();});}
+function htCmp(){const dim=htState.cmpDim,base=htSimBase(),cut=htState.cut,bs=htState.blockSem,keep=base.filter(r=>r.s==null?!bs:r.s>cut),cats=htCatVals(dim),gf=HTDIMS[dim].get,max=0.6;let h='';
+  cats.forEach(c=>{const cur=htAgg(base.filter(r=>gf(r)===c)),sim=htAgg(keep.filter(r=>gf(r)===c));if(!cur.n)return;const d=(cur.fin-sim.fin)*100;
+   h+=`<div style="display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:center;margin:7px 0"><div style="font-size:12px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c}</div><div><div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><div style="flex:1;height:10px;background:rgba(255,255,255,.05);border-radius:5px;overflow:hidden"><div style="width:${Math.min(100,cur.fin/max*100)}%;height:100%;background:var(--sem);opacity:.55;border-radius:5px"></div></div><span class="tnum" style="font-size:10.5px;color:var(--sem);min-width:38px;text-align:right">${htP(cur.fin)}</span></div><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:10px;background:rgba(255,255,255,.05);border-radius:5px;overflow:hidden"><div style="width:${Math.min(100,sim.fin/max*100)}%;height:100%;background:var(--good);border-radius:5px"></div></div><span class="tnum" style="font-size:10.5px;color:var(--good);min-width:38px;text-align:right">${htP(sim.fin)}</span></div></div><div class="tnum" style="font-size:11px;color:${d>0.05?'var(--good)':'var(--muted)'};min-width:56px;text-align:right">${d>0.05?'−'+d.toFixed(1).replace('.',',')+' p.p.':'—'}</div></div>`;});
+  document.getElementById('htCmp').innerHTML=h+'<div class="legend" style="margin-top:10px"><span><i style="background:var(--sem);opacity:.55"></i>Hoje</span><span><i style="background:var(--good)"></i>Com bloqueio (simulado)</span></div>';}
+const HTQUICK=[{l:'🔴 Só Alto risco',f:()=>htState.risco='Alto'},{l:'🎤 Só Evento',f:()=>htState.tipo='Evento'},{l:'🏫 Só Presencial',f:()=>htState.md='Presencial'},{l:'↺ Limpar tudo',f:()=>{htState.cut=-1;htState.blockSem=false;htState.risco='';htState.tipo='';htState.safra='';htState.md='';htState.gen='';}}];
+function htQuickRender(){document.getElementById('htQuick').innerHTML=HTQUICK.map((q,i)=>`<button class="fchip" data-i="${i}">${q.l}</button>`).join('');document.querySelectorAll('#htQuick button').forEach(b=>b.onclick=()=>{HTQUICK[+b.dataset.i].f();htSyncControls();htSim();});}
+function htSyncControls(){document.getElementById('htCut').value=htState.cut;htCutLbl();document.querySelectorAll('#htScenario button').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.c===htState.cut));document.getElementById('htFRisco').value=htState.risco;document.getElementById('htFTipo').value=htState.tipo;document.getElementById('htFSafra').value=htState.safra;document.getElementById('htFModal').value=htState.md;document.getElementById('htFGen').value=htState.gen;}
+function htSimBase(){return htR.filter(r=>(!htState.tipo||r.t===htState.tipo)&&(!htState.risco||r.rk===htState.risco)&&(!htState.safra||r.sf===htState.safra)&&(!htState.md||r.md===htState.md)&&(!htState.gen||r.g===htState.gen));}
+function htSim(){const base=htSimBase(),cut=htState.cut,bs=htState.blockSem;
+  const keep=base.filter(r=>r.s==null?!bs:r.s>cut),blocked=base.filter(r=>r.s==null?bs:r.s<=cut);
+  const B=htAgg(base),A=htAgg(keep),K=htAgg(blocked);
+  const dpp=(B.fin-A.fin)*100,good=blocked.filter(r=>r.ven===0),goodG=good.reduce((a,r)=>a+r.gmv,0);
+  document.getElementById('sInadBA').innerHTML=`<span style="color:var(--sem)">${htP(B.fin)}</span> <span style="color:var(--muted)">→</span> <span style="color:var(--good)">${htP(A.fin)}</span>`;
+  document.getElementById('sInadPP').innerHTML=cut<0?'mova o corte para simular a redução':`<b style="color:var(--good)">−${dpp.toFixed(1).replace('.',',')} p.p.</b> de inadimplência`;
+  document.getElementById('sBlkGmv').textContent=fmtBRL(K.gmv);
+  document.getElementById('sBlkGmvPct').innerHTML=(B.gmv?(100*K.gmv/B.gmv).toFixed(0):0)+'% do GMV · <b>'+fmtInt(K.n)+'</b> pedidos bloqueados';
+  document.getElementById('sAvoid').textContent=fmtBRL(K.w+K.x);
+  document.getElementById('sAvoidH').textContent='Vencido D+30 + Atrasado que deixam de existir';
+  document.getElementById('sGoodN').innerHTML=fmtInt(good.length)+' <span style="font-size:13px;color:var(--ink2)">alunos</span>';
+  document.getElementById('sGoodH').innerHTML=`pagariam em dia mas seriam barrados · ${fmtBRL(goodG)} de venda · ${fmtBRL(K.v)} já recebido`;
+  const meth=[['Original',B.io,A.io],['Financeira ★',B.fin,A.fin],['Projetada',B.ip,A.ip]];
+  document.getElementById('htBeforeAfter').innerHTML='<table><thead><tr><th>Método</th><th>Antes</th><th>Depois</th><th>Δ p.p.</th></tr></thead><tbody>'+meth.map((m,i)=>{const d=(m[1]-m[2])*100;return `<tr ${i==1?'style="background:rgba(255,122,89,.08)"':''}><td>${m[0]}</td><td class="tnum">${htP(m[1])}</td><td class="tnum" style="color:var(--good)">${htP(m[2])}</td><td class="tnum">${d>=0?'−':'+'}${Math.abs(d).toFixed(1).replace('.',',')}</td></tr>`;}).join('')+'</tbody></table>';
+  const ratio=K.gmv?((K.w+K.x)/K.gmv):0;
+  document.getElementById('htPitch').innerHTML=cut<0
+    ?`Cenário atual (checkout aprova todos): inadimplência financeira de <b>${htP(B.fin)}</b>. Mova o corte de score ou escolha um cenário para simular o bloqueio.`
+    :`Com o Motor de Risco <b>bloqueando score ≤ ${cut}</b>, a inadimplência financeira cairia de <b style="color:var(--sem)">${htP(B.fin)}</b> para <b style="color:var(--good)">${htP(A.fin)}</b> (<b>−${dpp.toFixed(1).replace('.',',')} p.p.</b>). Custo: <b>${fmtBRL(K.gmv)}</b> em vendas não aprovadas (${B.gmv?(100*K.gmv/B.gmv).toFixed(0):0}% do faturamento), sendo ${fmtBRL(K.v)} de bons pagadores da faixa. <b>Para cada R$ 1,00 de venda barrada, evita-se R$ ${ratio.toFixed(2).replace('.',',')} de parcela vencida</b> → mais previsibilidade de caixa e menor exposição a perdas.`;
+  document.getElementById('htSemState').textContent=bs?'bloqueado':'mantido';
+  document.querySelectorAll('#htSemSeg button').forEach(x=>x.setAttribute('aria-pressed',(x.dataset.v==='1')===bs));
+  htCmp();}
+function htCutLbl(){document.getElementById('htCutV').textContent=htState.cut<0?'aprova todos':'≤ '+htState.cut;}
+function htBuild(){
+  document.getElementById('htFTipo').innerHTML='<option value="">Tipo: todos</option>'+[...new Set(htR.map(r=>r.t))].filter(Boolean).map(t=>`<option>${t}</option>`).join('');
+  document.getElementById('htFRisco').innerHTML='<option value="">Risco: todos</option>'+[...new Set(htR.map(r=>r.rk))].filter(Boolean).map(t=>`<option>${t}</option>`).join('');
+  document.getElementById('htFSafra').innerHTML='<option value="">Safra: todas</option>'+[...new Set(htR.map(r=>r.sf))].filter(Boolean).sort().map(t=>`<option>${t}</option>`).join('');
+  document.querySelectorAll('#htScenario button').forEach(b=>b.onclick=()=>{htState.cut=+b.dataset.c;htState.blockSem=(+b.dataset.c>=0);document.getElementById('htCut').value=htState.cut;htCutLbl();document.querySelectorAll('#htScenario button').forEach(x=>x.setAttribute('aria-pressed',x===b));htSim();});
+  document.getElementById('htCut').oninput=e=>{htState.cut=+e.target.value;htCutLbl();document.querySelectorAll('#htScenario button').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.c===htState.cut));htSim();};
+  document.querySelectorAll('#htSemSeg button').forEach(b=>b.onclick=()=>{htState.blockSem=b.dataset.v==='1';htSim();});
+  document.getElementById('htFTipo').onchange=e=>{htState.tipo=e.target.value;htSim();};
+  document.getElementById('htFRisco').onchange=e=>{htState.risco=e.target.value;htSim();};
+  document.getElementById('htFSafra').onchange=e=>{htState.safra=e.target.value;htSim();};
+  document.getElementById('htFModal').innerHTML='<option value="">Modalidade: todas</option>'+[...new Set(htR.map(r=>r.md))].filter(Boolean).map(t=>`<option>${t}</option>`).join('');
+  document.getElementById('htFModal').onchange=e=>{htState.md=e.target.value;htSim();};
+  document.getElementById('htFGen').innerHTML='<option value="">Gênero: todos</option>'+[...new Set(htR.map(r=>r.g))].filter(Boolean).map(t=>`<option>${t}</option>`).join('');
+  document.getElementById('htFGen').onchange=e=>{htState.gen=e.target.value;htSim();};
+  htQuickRender();htCmpTabs();htCombosDims();
+}
+htBuild();htStudy();htCombos();htCutLbl();htSim();bindTips();
+(function(){var b=document.getElementById('xlsBtn');if(b)b.title='Abre a planilha oficial no SharePoint/Excel Online (acesso TMB)';})();
+</script>

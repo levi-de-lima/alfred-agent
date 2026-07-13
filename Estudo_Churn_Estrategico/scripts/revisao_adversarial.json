@@ -1,0 +1,282 @@
+{
+  "summary": "Revisão adversarial do dashboard de churn TMB: completude vs requisitos, lógica financeira e UX/dataviz",
+  "agentCount": 4,
+  "logs": [],
+  "result": {
+    "total_findings": 28,
+    "sintese": {
+      "findings": [
+        {
+          "severity": "alta",
+          "category": "navegabilidade",
+          "requirement": "5, 7, 8",
+          "issue": "Os gráficos temporais fluxo (#chFlow / stackedArea) e recuperação (#chRecovery / linesChart) não têm nenhum handler de clique — só criam rects com data-tip e chamam bindTips(), sem onclick — logo violam 'todo gráfico navegável'. No caso da recuperação, ainda não existem records de reativação por produtor (records só tem Churn/Pré-Churn), então não há a quem listar.",
+          "fix": "Passar callback onclick para stackedArea e linesChart (mesmo padrão de groupedBars), ligando os rects mensais a openDrawer(). Para a recuperação, emitir no JSON os produtores reativados; sem esse dado, o req 5 fica incompleto nesse card — no mínimo abrir a gaveta do bloco corrente."
+        },
+        {
+          "severity": "alta",
+          "category": "drill-down",
+          "requirement": "5",
+          "issue": "Todas as fontes de drill usam churnRecs/filtered() (só st==='Churn'), então os 496 produtores Pré-Churn nunca aparecem na gaveta e a coluna 'Status' é sempre 'Churn' (redundante). O segmento mais recuperável — 492 pré no último mês, destacado no próprio gráfico — fica inacessível.",
+          "fix": "Adicionar um segmento de Status na barra (Churn / Pré-Churn / Ambos) que alimente filtered() e tornar a faixa Pré-Churn do #chFlow clicável para abrir a gaveta daquele grupo. Assim a coluna Status passa a variar e o revenue salvável fica navegável."
+        },
+        {
+          "severity": "alta",
+          "category": "financeiro-coerencia",
+          "requirement": "10",
+          "issue": "A 'Projeção de perda' (loss=gmv*rec) conta APENAS os 20% (juros+adm), mas o simulador soma os três fluxos (20% + operação R$1/boleto + antecipação) como 'receita total/ano'. Recuperar 100% no simulador devolveria MAIS do que a perda declarada. No default (pico R$435,6mi): perda mostra R$87,1mi vs risco real ~R$99,1mi — subestima ~R$12mi/ano (~14%). Mesmo vício no headline, na gaveta (loss=gmvOf*rec) e nas Ações (htG*rec).",
+          "fix": "Definir perda_total = receita + operação + antecipação e usar esse valor no headline, na coluna 'Perda/ano' da gaveta e no impacto das Ações — casando com a definição de 'receita total' do simulador. Alternativa: renomear o simulador para o mesmo escopo (só 20%) para não haver duas definições de receita."
+        },
+        {
+          "severity": "alta",
+          "category": "financeiro-premissa",
+          "requirement": "3",
+          "issue": "Todos os rótulos '/ano' (GMV anual em risco, receita/ano, taxa de operação/ano, antecipação/ano, headline, simulador) assumem que o GMV da lente é anual — só verdade para Pico 12m e Últimos 12m. Na lente 'Total histórico' (gt = R$512,5mi, estoque plurianual), multiplicar por 20% e chamar de '/ano' mistura estoque com fluxo e é matematicamente enganoso.",
+          "fix": "Quando lens='gt', suprimir/renomear os rótulos '/ano' (ex.: 'receita total histórica embutida') ou desabilitar a leitura anual para essa lente; deixar explícito no tooltip que a projeção anual só vale para Pico 12m e Últimos 12m."
+        },
+        {
+          "severity": "alta",
+          "category": "filtros-ux",
+          "requirement": "9",
+          "issue": "A 2ª linha de filtros (Cluster 4 chips + Safra 6 chips + 2 selects + label + nota + reset) soma ~1560px e quebra dentro de .frow{flex-wrap:wrap}; ao quebrar, um rótulo (.flab, com margin-right:-8px) pode ir para o fim da linha anterior e ficar separado dos seus chips.",
+          "fix": "Agrupar cada rótulo+controle num wrapper flex inseparável (div.fgroup com display:inline-flex; align-items:center; gap:8px; flex-wrap:nowrap), para que a quebra ocorra entre grupos e nunca entre rótulo e chips; alinhar .frow com align-items:flex-start e remover o margin-right negativo."
+        },
+        {
+          "severity": "alta",
+          "category": "dataviz-legibilidade",
+          "requirement": "4",
+          "issue": "No gráfico 'Motivos de churn' (hbars), a coluna de nome é minmax(120px,180px) com white-space:nowrap+ellipsis; 8 de 17 motivos têm >30 chars (até 46, ex. 'Contrato de Exclusividade com outra financeira'), então quase metade dos rótulos da causa raiz aparece cortada.",
+          "fix": "Alargar a coluna de nome (minmax 220–300px) e/ou permitir wrap em 2 linhas; alternativamente mover o valor para fora e deixar o nome completo. Adicionar data-tip na barra com nome+categoria+contagem."
+        },
+        {
+          "severity": "media",
+          "category": "navegabilidade",
+          "requirement": "5",
+          "issue": "O donut 'Causa raiz agregada' (#chCategoria) não é clicável (donut() só faz bindTips). Além disso, clicar numa barra de Motivos chama setMotivo() (só aplica filtro global), contrariando o subtítulo 'clique num motivo para ver os produtores' e sendo inconsistente com os clusters, que abrem a gaveta direto.",
+          "fix": "Adicionar onclick nas <path> do donut → openDrawer(filtered().filter(r=>(r.m||[]).some(x=>CAT[x]===cat)), 'Categoria X'); padronizar o clique do motivo para abrir a gaveta (openDrawer com filtro do motivo) OU ajustar a copy do subtítulo para 'clique para filtrar'."
+        },
+        {
+          "severity": "media",
+          "category": "consistencia-de-filtro",
+          "requirement": "7, 9",
+          "issue": "As séries temporais (fluxo e recuperação) não refletem os filtros de cluster/safra/gestor/motivo — o fluxo só aplica o bloco (fkey=state.bloco||'todos') e a recuperação usa DATA.recovery sempre. Ao filtrar ex. Titanium, KPIs e demais gráficos mudam mas as duas séries permanecem iguais — risco de enganar.",
+          "fix": "Emitir séries temporais filtráveis por cluster/safra no JSON, OU adicionar nota visível nos dois cards: 'série reflete apenas o filtro de bloco — não cluster/safra/gestor/motivo'."
+        },
+        {
+          "severity": "media",
+          "category": "acessibilidade-cor",
+          "requirement": "",
+          "issue": "O validador (Machado-2009) reprova o par azul #3574ff ↔ roxo #8b78ff com ΔE 6.6 sob protanopia (abaixo do piso 8) — ocorre em Cluster (Palladium×Titanium) e em Motivos/donut (Produto×Relacionamento). Bloco (ΔE 72) e Status (ΔE 25) passam.",
+          "fix": "Clusters são tiers ORDENADOS por faturamento: usar rampa sequencial de um só tom azul (validar com --ordinal), o que resolve o CVD e ainda codifica a ordem. Para as categorias de motivo, trocar o roxo por um tom quente distinto do azul (alvo ΔE≥12) e revalidar com scripts/validate_palette.js."
+        },
+        {
+          "severity": "media",
+          "category": "financeiro-lente",
+          "requirement": "2",
+          "issue": "A lente de GMV não é aplicada de forma consistente na tabela 'Detalhe por gestor': as linhas dos gestores individuais usam g.gmv_opp (fixado em peak12 no mega2.py), ignorando o seletor de lente, enquanto a linha 'Gestor TMB (coletivo)' usa gmvOf() e responde à lente. Em 'Últimos 12m' ou 'Total histórico' a tabela fica contraditória (coletivo muda, individuais não).",
+          "fix": "Calcular o GMV por gestor a partir de churnRecs com gmvOf() (mesma função das demais views) em vez do estático gmv_opp, para que toda a tabela respeite a lente ativa."
+        },
+        {
+          "severity": "media",
+          "category": "financeiro-premissa",
+          "requirement": "3",
+          "issue": "O default de 'GMV em risco'/perda usa Pico 12m (R$435,6mi = melhor janela = teto de capacidade). Como esses produtores já churnaram (realizado 12m ≈ R$47,6mi, gap ~9×), rotular 20%×pico como 'Projeção de perda de receita/ano' lê como perda esperada, quando é um teto otimista caso 100% voltassem ao pico.",
+          "fix": "Renomear para 'capacidade anual em risco' no default e/ou exibir lado a lado a perda com base no realizado (Últimos 12m) como piso e Pico como teto, deixando explícito que é um intervalo, não um número único."
+        },
+        {
+          "severity": "media",
+          "category": "financeiro-dupla-contagem",
+          "requirement": "10",
+          "issue": "O simulador soma juros+adm (20%) + antecipação (8,5%×adesão) como 'receita total'. Se o take de 20% já embutir a receita de antecipação sobre o mesmo volume financiado, somar os dois é dupla contagem. O rodapé só sinaliza a dúvida de bruto/líquido (cancelamentos), não esta.",
+          "fix": "Confirmar com o negócio (Levi/financeiro) se os 20% e a antecipação incidem sobre bases distintas; se houver sobreposição, subtrair a parcela para não somar duas vezes. Adicionar caveat no rodapé como já feito para cancelamentos."
+        },
+        {
+          "severity": "media",
+          "category": "financeiro-precisao",
+          "requirement": "10",
+          "issue": "As colunas por produtor da gaveta (GMV total, 12m, run-rate, perda) usam fmtBRL, que arredonda: R$ 512.340 vira 'R$ 512 mil' e R$ 3.500 vira 'R$ 4 mil'. Para uma lista de priorização de outreach por produtor, isso perde precisão relevante.",
+          "fix": "Usar fmtR (R$ cheio) nas linhas por produtor da gaveta; manter a abreviação (fmtBRL) apenas nos KPIs e no headline agregado."
+        },
+        {
+          "severity": "media",
+          "category": "tooltips-acessibilidade",
+          "requirement": "4",
+          "issue": "Tooltips são só de mouse: os ícones .info são <span> sem tabindex/role (invisíveis a teclado e touch) e o #tip só reage a mousemove. Faltam tooltips também onde o termo não é auto-explicativo — cabeçalhos da gaveta ('Run-rate', 'GMV total', 'GMV 12m', 'Perda/ano'), os 4 tiles financeiros e as barras de hbars (Motivos e GMV por cluster, que só têm title nativo).",
+          "fix": "Tornar .info focável (role='button'/tabindex=0 + aria-label) e disparar showTip também no focus; adicionar data-tip nos <th> da gaveta, nos tiles financeiros (ex.: Run-rate = pico de 12m; Perda/ano = GMV da lente × take) e nas barras de hbars."
+        },
+        {
+          "severity": "media",
+          "category": "tabelas-usabilidade",
+          "requirement": "5",
+          "issue": "Nem a tabela da gaveta nem a de gestores mostram indicador de ordenação; o th ativo e a direção (asc/desc) não são sinalizados, então o usuário não sabe por qual coluna está ordenado.",
+          "fix": "Renderizar ▲/▼ no cabeçalho da coluna ativa (dwSort/dwDir e sortKey/sortDir) e destacar o th ativo."
+        },
+        {
+          "severity": "baixa",
+          "category": "consistencia-de-dados",
+          "requirement": "7",
+          "issue": "A última barra do fluxo (todos, 2026-06) mostra Churn=3.569, mas o KPI 'Produtores em churn' e a soma dos blocos = 3.656 (~87 de diferença). status_flow e a contagem de records vêm de caminhos de cálculo diferentes — pode gerar dúvida na diretoria.",
+          "fix": "Reconciliar a geração de status_flow com a contagem de churn dos records (mega2.py), ou documentar no flowNote por que a série temporal difere do headline."
+        },
+        {
+          "severity": "baixa",
+          "category": "simulador-filtros",
+          "requirement": "10",
+          "issue": "O simulador usa churnRecs (base de churn INTEIRA) para cCom/cSem, ignorando os filtros ativos de cluster/safra/gestor/motivo — enquanto os 4 tiles logo acima respeitam o filtro. Com um filtro aplicado (ex.: só Rhodium), a parte de cima fica filtrada e o simulador global, o que confunde. Ele respeita lente e bloco (o pedido do req), mas não os demais filtros.",
+          "fix": "Ou aplicar filtered() ao simulador (mantendo os sliders por bloco), ou rotular explicitamente 'projeção sobre a base total de churn (com/sem gestor), independente dos filtros'."
+        },
+        {
+          "severity": "baixa",
+          "category": "limpeza",
+          "requirement": "3",
+          "issue": "Código morto na gaveta: st-${(r.st||'').replace('é','é')} substitui 'é' por 'é' (no-op). Além disso, o selo do KPI 'GMV em risco' usa a classe prov.est (borda laranja = estimativa) sobre um dado que o rodapé descreve como real do Metabase (bruto), gerando sinal ambíguo.",
+          "fix": "Remover o replace no-op; usar um selo neutro ou 'real (bruto)' para o GMV do Metabase, reservando o estilo 'est' para o que é realmente modelado (receita/projeção)."
+        },
+        {
+          "severity": "baixa",
+          "category": "filtros-a11y",
+          "requirement": "9",
+          "issue": "Os selects Gestor/Motivo usam <span class='flab'> como rótulo, sem <label for> (sem associação para leitor de tela). Escolher um gestor força state.bloco='com' silenciosamente (setBloco em fGestor.onchange), mas escolher 'Gestor TMB' não força 'sem' — efeito colateral escondido e assimétrico.",
+          "fix": "Trocar os spans por <label for> reais; ao mudar o bloco a partir do gestor, refletir isso visualmente no segmento Bloco e tratar 'Gestor TMB' de forma simétrica (bloco='sem')."
+        },
+        {
+          "severity": "baixa",
+          "category": "simulador-linearidade",
+          "requirement": "10",
+          "issue": "O simulador equipara % de produtores recuperados a % de GMV recuperado: nCom=round(cCom.length*pCom) mas gmvR=gCom*pCom, assumindo que os recuperados têm GMV médio (linear). Como o GMV é muito concentrado em whales (Rhodium), recuperar 15% dos produtores certos devolve muito mais (ou menos) que 15% linear.",
+          "fix": "Tornar explícita a premissa 'assume GMV médio por produtor' no texto, ou permitir simular recuperação priorizando por cluster/tier de GMV."
+        },
+        {
+          "severity": "baixa",
+          "category": "formatacao-inconsistente",
+          "requirement": "10",
+          "issue": "No simulador, o total usa fmtR (número exato em R$) enquanto os componentes usam fmtBRL (abreviado 'mi/mil'); os componentes exibidos podem não somar visualmente ao total, gerando desconfiança no número.",
+          "fix": "Usar o mesmo formatador para total e componentes (fmtBRL em ambos, ou fmtR em ambos)."
+        },
+        {
+          "severity": "baixa",
+          "category": "interacao-marcas",
+          "requirement": "4",
+          "issue": "Gráficos de linha/área não têm crosshair no hover (só tooltip via rects); os marcadores da recuperação têm r=2.5 (~5px, abaixo do mínimo de 8px do guia); o donut tem o miolo vazio (oportunidade de mostrar o total).",
+          "fix": "Adicionar linha-guia vertical (crosshair) no hover dos gráficos temporais; aumentar marcadores/área de acerto; exibir o total (N ocorrências) no centro do donut."
+        },
+        {
+          "severity": "baixa",
+          "category": "layout-overflow",
+          "requirement": "",
+          "issue": ".chart-tools é position:absolute no topo-direito e pode colidir com a legenda (topo-esquerdo) em larguras estreitas — sobretudo nos cards de fluxo/recuperação, cujos botões são largos; a gaveta com 12 colunas em min(920px,94vw) gera scroll horizontal.",
+          "fix": "Colocar as chart-tools no fluxo (header flex junto à legenda) em vez de absolute, empilhando sob a legenda no mobile; na gaveta, reduzir/agrupar colunas ou congelar a 1ª coluna (Código) ao rolar."
+        },
+        {
+          "severity": "baixa",
+          "category": "navegabilidade",
+          "requirement": "5",
+          "issue": "Os KPIs 'Taxa de churn' e 'Cobertura de motivo' não são clicáveis (só kpiProd e kpiGmv abrem gaveta); nenhum caminho leva direto à lista de 'quem não tem motivo documentado'. Melhoria, não bloqueio (os cards de bloco clicam para filtrar, coerente com o header).",
+          "fix": "Opcional: tornar o KPI de Cobertura clicável abrindo a gaveta dos churnados sem motivo (filtered().filter(r=>!(r.m||[]).length))."
+        }
+      ],
+      "verdict": "Consolidei os 29 achados brutos dos 3 revisores em 24 correções acionáveis, deduplicando o cluster de navegabilidade (fluxo/recuperação/donut/motivo) e os itens de tooltip. Os bloqueios de maior alavancagem são a navegabilidade dos gráficos (req 5) e a credibilidade financeira antes da diretoria (perda × simulador incoerentes e semântica '/ano' que quebra na lente Total histórico); resolver as 6 altas destrava o grosso do risco de UX/dataviz e dos números."
+    }
+  },
+  "workflowProgress": [
+    {
+      "type": "workflow_phase",
+      "index": 1,
+      "title": "Revisar"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 2,
+      "title": "Sintetizar"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 1,
+      "label": "review:completude",
+      "phaseIndex": 1,
+      "phaseTitle": "Revisar",
+      "agentId": "a58bcd770e1e0304a",
+      "agentType": "general-purpose",
+      "model": "claude-opus-4-8[1m]",
+      "state": "done",
+      "startedAt": 1783463962069,
+      "queuedAt": 1783463961991,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "Dashboard atende bem 8 dos 10 requisitos (base coletiva, GM…",
+      "promptPreview": "Você está revisando um dashboard HTML (vanilla JS, self-contained) de análise de churn da TMB (fintech de parcelamento p/ infoprodutores).\nLeia o arquivo do template: C:\\Users\\TMB1~1.NOT\\AppData\\Local\\Temp\\claude\\C--Users-TMB1-NOTE-TMB46\\1272d1c2-416e-4631-907f-564d564efdef\\scratchpad\\dash2_template.html  (contém TODO o HTML/CSS/JS; os dados reais são injetados no placeholder __DATA__).\n\nDados rea…",
+      "lastProgressAt": 1783464380446,
+      "tokens": 57566,
+      "toolCalls": 7,
+      "durationMs": 418374,
+      "resultPreview": "{\"findings\":[{\"severity\":\"alta\",\"category\":\"navegabilidade\",\"requirement\":\"5, 7\",\"issue\":\"O gráfico temporal principal (stackedArea / #chFlow, lógica do BI Ativo/Pré/Churn) NÃO é clicável — a função stackedArea() só cria rects com data-tip e chama bindTips(), sem nenhum onclick. Clicar não abre gaveta.\",\"fix\":\"Passar um callback onclick para stackedArea (igual ao padrão de groupedBars) e ligar os …"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 2,
+      "label": "review:financeiro",
+      "phaseIndex": 1,
+      "phaseTitle": "Revisar",
+      "agentId": "a26139954420cbd4e",
+      "agentType": "general-purpose",
+      "model": "claude-opus-4-8[1m]",
+      "state": "done",
+      "startedAt": 1783463962074,
+      "queuedAt": 1783463961991,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "As fórmulas unitárias estão em sua maioria corretas — recei…",
+      "promptPreview": "Você está revisando um dashboard HTML (vanilla JS, self-contained) de análise de churn da TMB (fintech de parcelamento p/ infoprodutores).\nLeia o arquivo do template: C:\\Users\\TMB1~1.NOT\\AppData\\Local\\Temp\\claude\\C--Users-TMB1-NOTE-TMB46\\1272d1c2-416e-4631-907f-564d564efdef\\scratchpad\\dash2_template.html  (contém TODO o HTML/CSS/JS; os dados reais são injetados no placeholder __DATA__).\n\nDados rea…",
+      "lastProgressAt": 1783464421280,
+      "tokens": 60674,
+      "toolCalls": 5,
+      "durationMs": 459205,
+      "resultPreview": "{\"findings\":[{\"severity\":\"alta\",\"category\":\"projecao-perda-incoerente\",\"issue\":\"A \\\"Projeção de perda\\\" (linha 452: loss=gmv*rec) conta APENAS a receita juros+adm (20%), excluindo a taxa de operação (R$1/boleto) e a antecipação — mas o simulador (linha 463) soma os três fluxos como \\\"receita total/ano\\\". Isso torna a perda e o simulador incoerentes: recuperar 100% no simulador devolveria MAIS rece…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 3,
+      "label": "review:ux",
+      "phaseIndex": 1,
+      "phaseTitle": "Revisar",
+      "agentId": "a62703c2d56a46103",
+      "agentType": "general-purpose",
+      "model": "claude-opus-4-8[1m]",
+      "state": "done",
+      "startedAt": 1783463962075,
+      "queuedAt": 1783463961991,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "Dashboard sólido e bem instrumentado: atende à maioria dos …",
+      "promptPreview": "Você está revisando um dashboard HTML (vanilla JS, self-contained) de análise de churn da TMB (fintech de parcelamento p/ infoprodutores).\nLeia o arquivo do template: C:\\Users\\TMB1~1.NOT\\AppData\\Local\\Temp\\claude\\C--Users-TMB1-NOTE-TMB46\\1272d1c2-416e-4631-907f-564d564efdef\\scratchpad\\dash2_template.html  (contém TODO o HTML/CSS/JS; os dados reais são injetados no placeholder __DATA__).\n\nDados rea…",
+      "lastProgressAt": 1783464959830,
+      "tokens": 84628,
+      "toolCalls": 13,
+      "durationMs": 997755,
+      "resultPreview": "{\"verdict\":\"Dashboard sólido e bem instrumentado: atende à maioria dos 10 requisitos (lentes de GMV explícitas, proveniência clara, gaveta rica, empilhado de status legível — a faixa de churn chega a 67,8% no último mês e cresce de forma visível). Os ganhos de maior alavancagem estão em 4 pontos: (1) a barra de filtros quebra e órfã os rótulos, (2) a gaveta nunca mostra os 496 Pré-Churn (o segment…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 4,
+      "label": "sintese",
+      "phaseIndex": 2,
+      "phaseTitle": "Sintetizar",
+      "agentId": "a9d77436a03c4547a",
+      "model": "claude-opus-4-8[1m]",
+      "state": "done",
+      "startedAt": 1783464959835,
+      "queuedAt": 1783464959833,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "Consolidei os 29 achados brutos dos 3 revisores em 24 corre…",
+      "promptPreview": "Consolide os achados de 3 revisores de um dashboard de churn em uma lista priorizada, deduplicada, de correções ACIONÁVEIS. Remova duplicatas, ordene por severidade (alta→baixa) e por impacto. Foque no que realmente melhora o entregável.\n\nACHADOS BRUTOS:\n[\n {\n  \"severity\": \"alta\",\n  \"category\": \"navegabilidade\",\n  \"requirement\": \"5, 7\",\n  \"issue\": \"O gráfico temporal principal (stackedArea / #chFl…",
+      "lastProgressAt": 1783465162806,
+      "tokens": 26917,
+      "toolCalls": 1,
+      "durationMs": 202970,
+      "resultPreview": "{\"findings\":[{\"severity\":\"alta\",\"category\":\"navegabilidade\",\"requirement\":\"5, 7, 8\",\"issue\":\"Os gráficos temporais fluxo (#chFlow / stackedArea) e recuperação (#chRecovery / linesChart) não têm nenhum handler de clique — só criam rects com data-tip e chamam bindTips(), sem onclick — logo violam 'todo gráfico navegável'. No caso da recuperação, ainda não existem records de reativação por produtor (…"
+    }
+  ],
+  "totalTokens": 229785,
+  "totalToolCalls": 26
+}

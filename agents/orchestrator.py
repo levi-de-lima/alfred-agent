@@ -11,7 +11,7 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime, timezone
 
 from agents import context_agent, data_agent, retention_agent, acquisition_agent, report_agent
 from agents.analytics_agent import AnalyticsAgentError, AnalyticsInput, AnalyticsResult
@@ -67,8 +67,7 @@ def run(
     # ------------------------------------------------------------------
     # Estágio 1 — ContextAgent
     # ------------------------------------------------------------------
-    from datetime import date as _date
-    _data_ref_preview = _date.today()  # data de hoje para resolver expressões temporais
+    _data_ref_preview = date.today()  # data de hoje para resolver expressões temporais
 
     agents_called.append("ContextAgent")
     contract = context_agent.run(
@@ -90,8 +89,8 @@ def run(
     if contract.is_reformat_request and analytics_results_cache:
         _log(session_id, "reformat_shortcut", cached_results=len(analytics_results_cache))
         agents_called.append("ReportAgent")
-        primary_cached = analytics_results_cache[0] if analytics_results_cache else None
-        _meta_c = (primary_cached.summary_stats.get("_meta", {}) if primary_cached else {})
+        primary_cached = analytics_results_cache[0]
+        _meta_c = primary_cached.summary_stats.get("_meta", {})
         report = report_agent.run(
             ReportInput(
                 analytics_results=analytics_results_cache,
@@ -190,7 +189,7 @@ def run(
             analytics_results=results,
             user_query=user_query,
             is_speaking_to_gestor=_is_speaking,
-            identified_user=_identified or current_user_gestor if _is_speaking else None,
+            identified_user=(_identified or current_user_gestor) if _is_speaking else None,
             conversation_history=conversation_history or [],
         ),
         session_id=session_id,
@@ -225,7 +224,7 @@ def _run_specialists(
     suffix: str = "",
 ) -> list[AnalyticsResult]:
     """Dispara RetentionAgent e/ou AcquisitionAgent conforme as áreas."""
-    tasks: dict[str, any] = {}
+    tasks = {}
     if "retention" in areas:
         tasks["RetentionAgent"] = retention_agent.run
     if "acquisition" in areas:
@@ -254,7 +253,6 @@ def _run_specialists(
 
 
 def _empty_result(ctx) -> AnalyticsResult:
-    from agents.analytics_agent import AnalyticsResult
     return AnalyticsResult(
         query_type="greeting",
         summary_stats={},
@@ -292,7 +290,7 @@ def _log(session_id: str, event: str, **kwargs) -> None:
         f"EVENT={event}",
         *[f"{k}={v}" for k, v in kwargs.items()],
     ]
-    msg = f"{datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')} | {' | '.join(parts)}"
+    msg = f"{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')} | {' | '.join(parts)}"
     if event == "pipeline_error":
         logger.error(msg)
     else:

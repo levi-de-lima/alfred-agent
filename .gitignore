@@ -30,3 +30,17 @@ desktop.ini
 
 # Claude Code (settings locais)
 .claude/
+
+# Estudo Churn Estratégico — só código/docs vão ao Git.
+# Dado comercial sensível (nome de cliente + faturamento) e artefatos pesados
+# gerados ficam só local / Data Hub interno. Regra de ouro #3 do projeto.
+Estudo_Churn_Estrategico/dados/
+Estudo_Churn_Estrategico/*.xlsx
+# Dashboard é self-contained: embute os dados sensíveis → não versionar.
+Estudo_Churn_Estrategico/Dashboard_Churn_Estrategico.html
+
+# Planilhas/dados brutos em qualquer lugar do repo (guarda extra)
+*.xlsx
+*.xls
+*.csv
+*.parquet
