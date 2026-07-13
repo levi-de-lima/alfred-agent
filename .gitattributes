@@ -1,0 +1,16 @@
+# Normaliza quebras de linha: Git guarda sempre LF; no checkout usa o do SO.
+# Resolve o "arquivo aparece modificado só por CRLF/LF" no Windows.
+* text=auto
+
+# Binários — nunca converter quebra de linha
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.ico  binary
+*.gif  binary
+*.pdf  binary
+*.xlsx binary
+*.xls  binary
+*.parquet binary
+*.db   binary

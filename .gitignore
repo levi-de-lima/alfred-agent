@@ -31,6 +31,10 @@ desktop.ini
 # Claude Code (settings locais)
 .claude/
 
+# Backup temporário da .git corrompida (reparo 2026-07-13) — nunca versionar.
+# Pode apagar a pasta quando quiser; existe cópia em C:/gitfix.
+.git_corrompida_backup/
+
 # Estudo Churn Estratégico — só código/docs vão ao Git.
 # Dado comercial sensível (nome de cliente + faturamento) e artefatos pesados
 # gerados ficam só local / Data Hub interno. Regra de ouro #3 do projeto.
