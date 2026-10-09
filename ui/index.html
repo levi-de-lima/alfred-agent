@@ -1,0 +1,2436 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Anti-FOUC: aplica data-theme ANTES do CSS renderizar para evitar flash branco→escuro -->
+  <script>
+    (function(){
+      var t = localStorage.getItem('alfred-theme');
+      if (!t || t === 'system') {
+        t = 'dark';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+      // Preload da imagem de background do tema ativo
+      var lnk = document.createElement('link');
+      lnk.rel = 'preload';
+      lnk.as  = 'image';
+      lnk.href = '/static/backgrounds/alfred-bg-' + t + '.webp';
+      document.head.appendChild(lnk);
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alfred — Acme</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="/static/alfred-favicon.png" />
+  <link rel="icon" type="image/svg+xml" href="/static/alfred-favicon.svg" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── 1. Design Tokens — variables.css inlined ───────────────── */
+    :root {
+      /* Marca — invariantes (não mudam entre temas) */
+      --acme-blue:          #0066FF;
+      --acme-blue-hover:    #0052CC;
+      --acme-blue-pressed:  #0041A3;
+      --acme-blue-light:    #E8F0FF;
+      --acme-black:         #0A0A0A;
+
+      /* Semânticas */
+      --success: #22C55E;
+      --warning: #F59E0B;
+      --danger:  #EF4444;
+      --info:    var(--acme-blue);
+
+      /* Tipografia */
+      --font-sans:     'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-wordmark: 'Cinzel', serif;
+      --font-mono:     'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+      --fw-regular:  400;
+      --fw-medium:   500;
+      --fw-semibold: 600;
+      --fw-bold:     700;
+      --fs-xs:   12px;
+      --fs-sm:   13px;
+      --fs-base: 15px;
+      --fs-md:   16px;
+      --fs-lg:   18px;
+      --fs-xl:   20px;
+      --fs-2xl:  24px;
+      --fs-3xl:  32px;
+      --lh-tight:   1.2;
+      --lh-normal:  1.5;
+      --lh-relaxed: 1.6;
+      --ls-tight: -0.02em;
+      --ls-wide:   0.05em;
+
+      /* Espaçamento (escala 4px) */
+      --space-1:  4px;
+      --space-2:  8px;
+      --space-3:  12px;
+      --space-4:  16px;
+      --space-5:  20px;
+      --space-6:  24px;
+      --space-8:  32px;
+      --space-10: 40px;
+      --space-12: 48px;
+      --space-16: 64px;
+
+      /* Radius */
+      --radius-sm:       6px;
+      --radius-md:       8px;
+      --radius-lg:       12px;
+      --radius-xl:       18px;
+      --radius-xl-tight: 4px;
+      --radius-full:     9999px;
+
+      /* Sombras */
+      --shadow-none:   none;
+      --shadow-subtle: 0 1px 2px rgba(10, 10, 10, 0.10);
+      --shadow-card:   0 1px 3px rgba(10, 10, 10, 0.12), 0 1px 2px rgba(10, 10, 10, 0.10);
+
+      /* Layout */
+      --chat-max-width:             780px;
+      --header-height:              56px;
+      --input-bar-height:           72px;
+      --message-gap:                16px;
+      --user-bubble-max-width:      75%;
+      --assistant-bubble-max-width: 85%;
+      --bp-mobile:                  600px;
+      --sidebar-width:              280px;
+
+      /* Motion */
+      --duration-fast:   120ms;
+      --duration-normal: 200ms;
+      --duration-slow:   400ms;
+      --easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+      /* z-index */
+      --z-base:    0;
+      --z-header:  10;
+      --z-input:   10;
+      --z-overlay: 19;
+      --z-sidebar: 20;
+      --z-toast:   50;
+      --z-modal:   100;
+
+      /* Status badges — business-specific, sem variante dark (cores fixas de negócio) */
+      --status-ativo-bg:      #ECFDF5;
+      --status-ativo-text:    #065F46;
+      --status-prechurn-bg:   #FFFBEB;
+      --status-prechurn-text: #92400E;
+      --status-churn-bg:      #FEF2F2;
+      --status-churn-text:    #991B1B;
+      --status-inativo-bg:    #F3F4F6;
+      --status-inativo-text:  #6B7280;
+    }
+
+    /* Tema claro (default) */
+    :root,
+    [data-theme="light"] {
+      --bg:           #F7F7F5;
+      --surface:      #FFFFFF;
+      --surface-alt:  #FAFAFA;
+      --border:       #D4D4D2;
+      --border-strong:#C0C0BE;
+
+      --text-primary:   #1A1A1A;
+      --text-secondary: #6B6B6B;
+      --text-muted:     #7A7A7A;
+
+      --brand-accent:       var(--acme-blue);
+      --brand-accent-hover: var(--acme-blue-hover);
+      --brand-accent-light: var(--acme-blue-light);
+
+      --user-bubble:           var(--acme-blue);
+      --user-bubble-text:      #FFFFFF;
+      --assistant-bubble:      #FFFFFF;
+      --assistant-bubble-text: #1A1A1A;
+
+      --code-bg: #F4F4F2;
+
+      --bg-image: url('/static/backgrounds/alfred-bg-light.webp');
+
+      --sidebar-bg: #F0F0EC;
+      --header-bg:  var(--surface);
+
+      color-scheme: light;
+    }
+
+    /* Tema escuro — Charcoal Notion-style */
+    [data-theme="dark"] {
+      --bg:           #1A1A1A;
+      --surface:      #242424;
+      --surface-alt:  #2E2E2E;
+      --border:       #3A3A3A;
+      --border-strong:#4A4A4A;
+
+      --text-primary:   #ECECEC;
+      --text-secondary: #A0A0A0;
+      --text-muted:     #6B6B6B;
+
+      --brand-accent:       #4D8FFF;
+      --brand-accent-hover: #6BA3FF;
+      --brand-accent-light: #1A2E5C;
+
+      --user-bubble:           #4D8FFF;
+      --user-bubble-text:      #FFFFFF;
+      --assistant-bubble:      #242424;
+      --assistant-bubble-text: #ECECEC;
+
+      --code-bg: #0F0F0F;
+
+      --bg-image: url('/static/backgrounds/alfred-bg-dark.webp');
+
+      --sidebar-bg: var(--surface);
+      --header-bg:  #1E1E1E;
+
+      --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --shadow-card:   0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2);
+
+      color-scheme: dark;
+    }
+
+    /* Auto-switch se não houver preferência salva */
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg:           #1A1A1A;
+        --surface:      #242424;
+        --surface-alt:  #2E2E2E;
+        --border:       #3A3A3A;
+        --border-strong:#4A4A4A;
+        --text-primary:   #ECECEC;
+        --text-secondary: #A0A0A0;
+        --text-muted:     #6B6B6B;
+        --brand-accent:       #4D8FFF;
+        --brand-accent-hover: #6BA3FF;
+        --brand-accent-light: #1A2E5C;
+        --user-bubble:           #4D8FFF;
+        --user-bubble-text:      #FFFFFF;
+        --assistant-bubble:      #242424;
+        --assistant-bubble-text: #ECECEC;
+        --code-bg: #0F0F0F;
+        color-scheme: dark;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text-primary);
+      height: 100dvh;
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
+    }
+
+    /* ── Main area (wraps header + chat + input) ────────────── */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* ── 2. Header ──────────────────────────────────────────────── */
+    #header {
+      width: 100%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-6);
+      height: var(--header-height);
+      background: var(--header-bg);
+      border-bottom: none;
+      z-index: var(--z-header);
+    }
+
+    /* Empty state — remove border-right da sidebar */
+    body:has(#chat-wrapper:not(.has-messages)) #sidebar {
+      border-right-width: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+    }
+
+    /* ── Alfred lockup ──────────────────────────────────────────── */
+    #alfred-lockup {
+      height: 32px;
+      width: auto;
+      color: var(--brand-accent);
+      display: block;
+    }
+
+    /* ── Header right side ──────────────────────────────────────── */
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    #explorer-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      transition: background var(--duration-fast), color var(--duration-fast);
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    #explorer-btn:hover { background: var(--brand-accent-light); color: var(--brand-accent); }
+    #explorer-btn svg { transition: transform 200ms ease; }
+    #explorer-btn:active svg { transform: rotate(15deg); }
+
+    #theme-toggle {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      transition: background var(--duration-fast), color var(--duration-fast);
+      flex-shrink: 0;
+    }
+
+    #theme-toggle:hover {
+      background: var(--brand-accent-light);
+      color: var(--brand-accent);
+    }
+
+    #theme-toggle svg {
+      transition: transform 200ms ease;
+    }
+
+    #theme-toggle:active svg {
+      transform: rotate(15deg);
+    }
+
+
+    /* ── Chat wrapper ───────────────────────────────────────────── */
+    #chat-wrapper {
+      width: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      background-color: var(--bg);
+    }
+
+    /* Camada da imagem de fundo — pseudo-elemento permite filter isolado */
+    #chat-wrapper::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: var(--bg-image);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: 0;
+    }
+
+    [data-theme="dark"] #chat-wrapper::before {
+      filter: brightness(0.55) contrast(1.1) saturate(0.85);
+    }
+
+    [data-theme="light"] #chat-wrapper::before {
+      filter: contrast(1.08) saturate(1.05);
+    }
+
+    /* Overlay que cobre a imagem com flat color quando há mensagens */
+    #chat-wrapper::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--bg);
+      opacity: 0;
+      transition: opacity 400ms ease;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    #chat-wrapper.has-messages::after {
+      opacity: 1;
+    }
+
+    /* ── Messages area ──────────────────────────────────────────── */
+    #messages {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      overflow-y: auto;
+      padding: var(--space-10) var(--space-6) 140px;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      scroll-behavior: smooth;
+      scrollbar-gutter: stable;
+      z-index: 2;
+    }
+
+    /* Sem mensagens: #messages não deve interceptar cliques dos chips no welcome screen */
+    #chat-wrapper:not(.has-messages) #messages {
+      pointer-events: none;
+    }
+
+    /* ── 6 & 7. Bubbles ─────────────────────────────────────────── */
+    .bubble-row {
+      display: flex;
+      width: 100%;
+    }
+
+    .bubble-row.user { justify-content: flex-end; }
+
+    .bubble-row.alfred {
+      justify-content: flex-start;
+      align-items: flex-start;
+      gap: var(--space-3);
+      position: relative;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 2px;
+      right: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-md);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      transition: background var(--duration-fast), color var(--duration-fast);
+    }
+
+    .bubble-row.alfred:hover .copy-btn { display: flex; }
+
+    .copy-btn:hover {
+      background: var(--brand-accent-light);
+      color: var(--brand-accent);
+    }
+
+    .copy-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .bubble {
+      font-size: var(--fs-base);
+      line-height: var(--lh-relaxed);
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .bubble.user {
+      background: var(--user-bubble);
+      color: var(--user-bubble-text);
+      border-radius: 18px 18px 4px 18px;
+      padding: 10px var(--space-4);
+      max-width: 75%;
+      font-size: var(--fs-base);
+      line-height: var(--lh-normal);
+      align-self: flex-end;
+      white-space: pre-wrap;
+    }
+
+    .bubble.alfred {
+      color: var(--text-primary);
+      padding: 0;
+      max-width: var(--assistant-bubble-max-width);
+    }
+
+    /* ── 5. Alfred avatar ───────────────────────────────────────── */
+    .alfred-avatar {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    /* ── Separador entre rodadas Q&A ────────────────────────────── */
+    .round-separator {
+      border: none;
+      border-top: 1px solid var(--border);
+      opacity: 0.5;
+      margin: var(--space-6) 0;
+    }
+
+    /* ── Markdown dentro da bolha Alfred ────────────────────────── */
+    .bubble.alfred h1,
+    .bubble.alfred h2,
+    .bubble.alfred h3 {
+      margin: var(--space-3) 0 6px;
+      font-weight: var(--fw-semibold);
+      line-height: var(--lh-tight);
+    }
+    .bubble.alfred h1 { font-size: 17px; }
+    .bubble.alfred h2 { font-size: var(--fs-md); }
+    .bubble.alfred h3 { font-size: var(--fs-base); }
+
+    .bubble.alfred p { margin: 6px 0; }
+
+    .bubble.alfred ul,
+    .bubble.alfred ol {
+      margin: 6px 0 6px var(--space-5);
+    }
+
+    .bubble.alfred li { margin: 3px 0; }
+
+    .bubble.alfred strong { font-weight: var(--fw-semibold); }
+
+    .bubble.alfred em { font-style: italic; }
+
+    .bubble.alfred code {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1px 5px;
+      font-size: var(--fs-sm);
+      font-family: var(--font-mono);
+    }
+
+    .bubble.alfred pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      overflow-x: auto;
+      margin: var(--space-2) 0;
+    }
+
+    .bubble.alfred pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: var(--fs-sm);
+    }
+
+    .bubble.alfred hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: var(--space-3) 0;
+    }
+
+    .bubble.alfred blockquote {
+      border-left: 3px solid var(--border);
+      margin: var(--space-2) 0;
+      padding-left: var(--space-3);
+      color: var(--text-secondary);
+    }
+
+    /* Tabelas */
+    .bubble.alfred table {
+      border-collapse: collapse;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      width: 100%;
+      font-size: var(--fs-sm);
+      margin: var(--space-2) 0;
+      border: 1px solid var(--border);
+    }
+
+    .bubble.alfred th {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-weight: var(--fw-semibold);
+      padding: var(--space-2) var(--space-3);
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .bubble.alfred td {
+      padding: var(--space-2) var(--space-3);
+      border-bottom: 1px solid var(--border);
+      transition: background 80ms ease;
+    }
+
+    .bubble.alfred tbody tr:hover td {
+      background: var(--brand-accent-light);
+    }
+
+    .bubble.alfred tr:last-child td { border-bottom: none; }
+
+    .bubble.alfred tr:nth-child(even) td { background: var(--surface-alt); }
+
+    /* Rodapé de citação */
+    .bubble.alfred .citation {
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+      margin-top: 10px;
+      font-style: italic;
+    }
+
+    /* ── Response footnote (info-box) ───────────────────────────── */
+    .response-footnote {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      background: var(--surface-alt);
+      border-left: 2px solid var(--text-muted);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: var(--fs-xs);
+      color: var(--text-secondary);
+      margin-top: var(--space-4);
+    }
+
+    .response-footnote svg {
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: var(--text-muted);
+    }
+
+    .response-footnote p { margin: 0; }
+    .response-footnote p + p { margin-top: 4px; }
+
+    /* ── Response note (footnote asteriscada gerada pelo modelo) ── */
+    .response-note {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-style: italic;
+      font-weight: 400;
+      margin: 16px 0 8px;
+      line-height: 1.5;
+    }
+
+    /* ── 9. Status badges ───────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: var(--fw-medium);
+      white-space: nowrap;
+    }
+    .badge-ativo    { background: var(--status-ativo-bg);    color: var(--status-ativo-text); }
+    .badge-prechurn { background: var(--status-prechurn-bg); color: var(--status-prechurn-text); }
+    .badge-churn    { background: var(--status-churn-bg);    color: var(--status-churn-text); }
+    .badge-inativo  { background: var(--status-inativo-bg);  color: var(--status-inativo-text); border: 1px solid var(--border); }
+
+    /* ── Loading dots ───────────────────────────────────────────── */
+    .loading-bubble {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: var(--space-4) var(--space-5);
+    }
+
+    .loading-bubble .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      animation: dot-fade 1.2s infinite;
+    }
+
+    .loading-bubble .dot:nth-child(2) { animation-delay: 0.2s; }
+    .loading-bubble .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes dot-fade {
+      0%, 80%, 100% { opacity: 0.25; }
+      40% { opacity: 1; }
+    }
+
+    /* ── 8. Input bar — flutuante ───────────────────────────────── */
+    #input-bar {
+      position: absolute;
+      bottom: var(--space-6);
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(720px, calc(100% - 48px));
+      background: transparent;
+      z-index: var(--z-input);
+    }
+
+    #input-form {
+      width: 100%;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      background: rgba(255, 255, 255, 0.85); /* var(--surface) light @ 0.85 */
+      backdrop-filter: blur(12px) saturate(180%);
+      -webkit-backdrop-filter: blur(12px) saturate(180%);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 6px 8px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    [data-theme="dark"] #input-form {
+      background: rgba(36, 36, 36, 0.85); /* var(--surface) dark @ 0.85 */
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    #input-form:focus-within {
+      border-color: var(--brand-accent);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15),
+                  0 0 0 3px var(--brand-accent-light);
+    }
+
+    [data-theme="dark"] #input-form:focus-within {
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4),
+                  0 0 0 3px var(--brand-accent-light);
+    }
+
+    #user-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 10px var(--space-2);
+      font-family: var(--font-sans);
+      font-size: var(--fs-base);
+      color: var(--text-primary);
+      resize: none;
+      outline: none;
+      min-height: 46px;
+      max-height: 160px;
+      overflow-y: auto;
+      line-height: var(--lh-normal);
+    }
+
+    #user-input::placeholder { color: var(--text-muted); }
+
+    #user-input:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* ── Scroll anchor button ───────────────────────────────────── */
+    #scroll-anchor-btn {
+      position: absolute;
+      bottom: 96px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-full);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-card);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      z-index: var(--z-input);
+      transition: background var(--duration-fast), color var(--duration-fast);
+    }
+
+    #scroll-anchor-btn:hover {
+      background: var(--brand-accent-light);
+      color: var(--brand-accent);
+    }
+
+    #scroll-anchor-btn svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* ── KPI value — sem quebra de linha, ellipsis pro overflow ─── */
+    .kpi-value {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Fade overlay (sobre as mensagens, abaixo do input) ─────── */
+    .fade-overlay {
+      position: absolute;
+      bottom: 0; left: 0; right: 14px;
+      height: 120px;
+      pointer-events: none;
+      background: linear-gradient(to bottom,
+        transparent 0%,
+        var(--bg) 60%,
+        var(--bg) 100%);
+      z-index: 5;
+    }
+
+    /* No empty state: sem calha de scrollbar, fade mais alto e suave */
+    #chat-wrapper:not(.has-messages) .fade-overlay {
+      right: 0;
+      height: 160px;
+      background: linear-gradient(to bottom,
+        transparent 0%,
+        var(--bg) 80%,
+        var(--bg) 100%);
+    }
+
+    /* Fade topo — suaviza transição header→imagem no empty state */
+    .fade-overlay-top {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: linear-gradient(to bottom,
+        var(--header-bg) 0%,
+        transparent 100%);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    #send-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-full);
+      background: var(--brand-accent);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      align-self: center;
+      transition: background var(--duration-fast), transform var(--duration-fast);
+    }
+
+    #send-btn:hover  { background: var(--brand-accent-hover); }
+    #send-btn:active { transform: scale(0.95); }
+
+    #send-btn:disabled {
+      background: var(--text-muted);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #send-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: white;
+    }
+
+    #stop-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-full);
+      background: var(--text-muted);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      align-self: center;
+      transition: background var(--duration-fast), transform var(--duration-fast);
+    }
+    #stop-btn:hover  { background: var(--danger); }
+    #stop-btn:active { transform: scale(0.95); }
+    #stop-btn svg {
+      width: 16px;
+      height: 16px;
+      fill: white;
+    }
+
+    /* ── 4. Welcome screen ──────────────────────────────────────── */
+    #welcome-screen {
+      position: absolute;
+      top: calc(50% - 36px);
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Vignette radial para legibilidade sobre a imagem de fundo */
+    #welcome-screen::before {
+      content: '';
+      position: absolute;
+      inset: -60px -80px;
+      background: radial-gradient(ellipse at center, var(--bg) 0%, transparent 60%);
+      opacity: 0.55;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    #welcome-screen p {
+      font-weight: 400;
+    }
+
+    [data-theme="light"] #welcome-screen p {
+      color: var(--text-primary);
+      opacity: 0.80;
+    }
+
+    [data-theme="dark"] #welcome-screen p {
+      color: var(--text-secondary);
+      opacity: 1;
+    }
+
+    #welcome-screen > * {
+      position: relative;
+      z-index: 2;
+    }
+
+    #welcome-screen.fade-out { opacity: 0; }
+
+    /* ── Suggestion chips ───────────────────────────────────────── */
+    #suggestion-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      justify-content: center;
+      margin-top: var(--space-5);
+      position: relative;
+      z-index: 2;
+    }
+
+    .suggestion-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      padding: 6px 14px;
+      font-family: var(--font-sans);
+      font-size: var(--fs-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background var(--duration-fast), color var(--duration-fast),
+                  border-color var(--duration-fast);
+      pointer-events: all;
+    }
+
+    .suggestion-chip:hover {
+      background: var(--brand-accent-light);
+      color: var(--brand-accent);
+      border-color: var(--brand-accent);
+    }
+
+    [data-theme="dark"] .suggestion-chip {
+      background: var(--surface-alt);
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-width);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      background: var(--sidebar-bg);
+      border-right: none;
+      overflow: hidden;
+      z-index: var(--z-sidebar);
+    }
+
+    .sidebar-header {
+      height: var(--header-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-4);
+      flex-shrink: 0;
+      gap: var(--space-1);
+    }
+
+    .sidebar-title {
+      font-size: 14px;
+      font-weight: var(--fw-semibold);
+      color: var(--text-secondary);
+      flex: 1;
+      padding: 0 var(--space-1);
+    }
+
+    #sidebar-menu-btn {
+      display: none;
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      color: var(--text-secondary);
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background var(--duration-fast), color var(--duration-fast);
+    }
+
+    #sidebar-menu-btn:hover {
+      background: var(--brand-accent-light);
+      color: var(--brand-accent);
+    }
+
+    #new-chat-btn {
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background var(--duration-fast), color var(--duration-fast);
+    }
+
+    #new-chat-btn:hover {
+      background: var(--brand-accent-light);
+      color: var(--brand-accent);
+    }
+
+    #new-chat-btn:active {
+      background: color-mix(in srgb, var(--brand-accent) 15%, transparent);
+      color: var(--brand-accent);
+    }
+
+    #chat-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-2);
+    }
+
+    .chat-group-label {
+      font-size: 11px;
+      font-weight: var(--fw-semibold);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: var(--ls-wide);
+      padding: var(--space-3) var(--space-3) var(--space-1);
+    }
+
+    .chat-item {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 12px;
+      border: none;
+      border-left: 3px solid transparent;
+      border-radius: var(--radius-md);
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+      color: var(--text-primary);
+      transition: background var(--duration-fast), border-left-color var(--duration-fast);
+      position: relative;
+    }
+
+    .chat-item:hover { background: var(--brand-accent-light); }
+
+    .chat-item.active {
+      background: var(--brand-accent-light);
+      border-left-color: var(--brand-accent);
+      padding-left: 9px;
+      color: var(--text-primary);
+    }
+
+    .chat-item.active .chat-item-time {
+      color: var(--text-secondary);
+    }
+
+    .chat-item.processing .chat-item-title::after {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--brand-accent);
+      margin-left: 6px;
+      vertical-align: middle;
+      animation: sidebar-pulse 1.2s ease infinite;
+    }
+
+    @keyframes sidebar-pulse {
+      0%, 100% { opacity: 0.3; transform: scale(0.75); }
+      50%       { opacity: 1;   transform: scale(1); }
+    }
+
+    .chat-item-title {
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-medium);
+      color: var(--text-primary);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      padding-right: 24px;
+    }
+
+    .chat-item-actions {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: none;
+    }
+
+    .chat-item:hover .chat-item-actions,
+    .chat-item-actions.open { display: flex; }
+
+    .chat-item-menu-btn {
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 4px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--duration-fast), color var(--duration-fast);
+    }
+
+    .chat-item-menu-btn:hover {
+      background: var(--border);
+      color: var(--text-primary);
+    }
+
+    .chat-dropdown {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 4px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-card);
+      z-index: 50;
+      min-width: 148px;
+      overflow: hidden;
+    }
+
+    .chat-dropdown button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: var(--fs-sm);
+      color: var(--text-primary);
+      text-align: left;
+      transition: background var(--duration-fast);
+    }
+
+    .chat-dropdown button:hover { background: var(--bg); }
+
+    .chat-dropdown button.danger { color: var(--danger); }
+
+    .chat-dropdown button.danger:hover { background: #FEF2F2; }
+
+    [data-theme="dark"] .chat-dropdown button.danger:hover { background: #2D1515; }
+
+    /* Empty state */
+    .chat-list-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: var(--space-2);
+      padding: var(--space-8) var(--space-4);
+      text-align: center;
+    }
+
+    .chat-list-empty-title {
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-medium);
+      color: var(--text-secondary);
+    }
+
+    .chat-list-empty-sub {
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+    }
+
+    /* Sidebar search */
+    .chat-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: var(--space-2) var(--space-2) var(--space-2);
+      padding: 8px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+    }
+
+    [data-theme="dark"] .chat-search {
+      background: var(--surface-alt);
+    }
+
+    .chat-search:focus-within {
+      border-color: var(--brand-accent);
+    }
+
+    .chat-search input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-size: var(--fs-sm);
+      font-family: var(--font-sans);
+    }
+
+    .chat-search input::placeholder { color: var(--text-muted); }
+
+    .chat-search svg { color: var(--text-muted); flex-shrink: 0; }
+
+    .chat-search-empty {
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+      text-align: center;
+      padding: var(--space-4) var(--space-2);
+    }
+
+    /* Skeleton loading */
+    .chat-skeleton {
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-radius: var(--radius-md);
+    }
+
+    .skeleton-line {
+      height: 12px;
+      border-radius: var(--radius-sm);
+      background: var(--border);
+      animation: shimmer 1.2s ease infinite;
+    }
+
+    .skeleton-line.short { width: 60%; }
+    .skeleton-line.xshort { width: 30%; }
+
+    @keyframes shimmer {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      padding: 0 var(--space-4);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-footer span {
+      font-size: var(--fs-xs);
+      color: var(--text-secondary);
+    }
+
+    /* Mobile overlay */
+    #sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: var(--z-overlay);
+    }
+
+    #sidebar-overlay.visible { display: block; }
+
+    /* Hamburger in main header (mobile only) */
+    #header-menu-btn {
+      display: none;
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      color: var(--text-secondary);
+      align-items: center;
+      justify-content: center;
+      margin-right: var(--space-2);
+      flex-shrink: 0;
+      transition: background var(--duration-fast), color var(--duration-fast);
+    }
+
+    #header-menu-btn:hover {
+      background: var(--brand-accent-light);
+      color: var(--brand-accent);
+    }
+
+    /* ── Modal customizado (substitui prompt() nativo) ─────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: var(--z-modal);
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.visible { display: flex; }
+
+    .modal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: var(--space-6);
+      width: 100%;
+      max-width: 360px;
+      margin: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    .modal-title {
+      font-size: var(--fs-base);
+      font-weight: var(--fw-medium);
+      color: var(--text-primary);
+    }
+
+    .modal-input {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 9px 14px;
+      font-family: var(--font-sans);
+      font-size: var(--fs-base);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+    }
+
+    .modal-input:focus {
+      border-color: var(--brand-accent);
+      box-shadow: 0 0 0 3px var(--brand-accent-light);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: var(--space-2);
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 8px 18px;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: var(--fs-sm);
+      font-weight: var(--fw-medium);
+      transition: background var(--duration-fast);
+    }
+
+    .modal-btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+
+    .modal-btn-secondary:hover { background: var(--surface-alt); }
+
+    .modal-btn-primary {
+      background: var(--brand-accent);
+      color: #fff;
+    }
+
+    .modal-btn-primary:hover { background: var(--brand-accent-hover); }
+
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .bubble.user { max-width: 95%; }
+    }
+
+    @media (max-width: 768px) {
+      #sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100dvh;
+        width: min(var(--sidebar-width), 85vw);
+        transform: translateX(-100%);
+        transition: transform var(--duration-normal) ease;
+        box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
+      }
+
+      #sidebar.open {
+        transform: translateX(0);
+      }
+
+      #sidebar-menu-btn {
+        display: flex;
+      }
+
+      #header-menu-btn {
+        display: flex;
+      }
+
+      #input-bar {
+        bottom: var(--space-4);
+        width: calc(100% - var(--space-8));
+      }
+    }
+
+    /* ── Toast ──────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: var(--space-6);
+      right: var(--space-6);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-card);
+      padding: 10px var(--space-4);
+      font-size: var(--fs-sm);
+      color: var(--text-primary);
+      z-index: var(--z-toast);
+      max-width: 280px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity var(--duration-normal) ease,
+                  transform var(--duration-normal) ease;
+      pointer-events: none;
+    }
+
+    #toast.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <nav id="sidebar" aria-label="Histórico de conversas">
+    <div class="sidebar-header">
+      <!-- Hambúrguer (visível só em mobile, fecha o drawer) -->
+      <button id="sidebar-menu-btn" aria-label="Fechar menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <span class="sidebar-title">Conversas</span>
+      <button id="new-chat-btn" aria-label="Nova conversa">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="chat-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="chat-search-input" placeholder="Buscar conversa..."
+             autocomplete="off" spellcheck="false" />
+    </div>
+    <div id="chat-list">
+      <!-- populado pelo JS -->
+    </div>
+    <footer class="sidebar-footer">
+      <span>Acme Sales Ops</span>
+    </footer>
+  </nav>
+
+  <!-- Mobile overlay (clicar fecha o drawer) -->
+  <div id="sidebar-overlay"></div>
+
+  <!-- Área principal -->
+  <div id="main">
+
+  <!-- Header -->
+  <header id="header">
+    <div class="header-left">
+      <!-- Hambúrguer principal (visível só em mobile, abre a sidebar) -->
+      <button id="header-menu-btn" aria-label="Abrir menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <!-- Alfred lockup — wyvern + "ALFRED" em Cinzel, fill=currentColor adapta ao tema -->
+      <svg id="alfred-lockup" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 128" role="img" aria-label="Alfred">
+        <g transform="translate(12, 14) scale(0.0898) translate(-314, -467)">
+          <path fill="currentColor" d="M314.326 594.005C477.203 482.434 664.755 433.335 858.327 490.718C964.282 522.127 1057.62 581.699 1128.55 666.642C1136.8 676.523 1152.27 693.644 1158.02 704.249C1127.39 693.403 1102.52 686.347 1081.04 716.837C1047.51 764.446 1073.81 829.846 1117.37 860.669C1170.13 897.994 1234.52 908.621 1297.52 900.118C1304.23 899.213 1327.53 894.069 1330.93 889.451C1330.67 886.577 1329.63 884.172 1327.63 882.118C1309.31 863.248 1291.35 845.075 1273.96 825.27C1273.69 835.184 1275.81 847.754 1276.25 858.734C1243 822.899 1242.83 792.446 1235.97 748.406C1229.68 758.561 1221.25 782.531 1216.17 794.877C1202.37 759.392 1193.94 718.355 1211.17 681.685C1214.57 674.445 1225.42 664.32 1228.27 655.891L1227.2 655.145C1213.19 660.75 1206.34 669.461 1195.69 680.033C1195.69 671.675 1197.11 663.379 1199.88 655.495C1212.73 618.46 1241.26 601.898 1274.64 585.939C1213.9 582.298 1186.89 574.589 1180.12 508.978C1187.8 519.225 1196.15 531.699 1207.25 537.844C1242.79 558.044 1276.57 535.227 1307.71 518.449C1337.83 502.224 1373.65 489.177 1405.63 508.11C1414.7 508.034 1459.38 500.736 1463.94 494.526C1465.52 488.301 1459.66 482.448 1457.18 475.467L1458.38 474.036C1468.84 470.996 1483.57 475.69 1493.3 479.518C1511.9 486.837 1536.88 530.899 1526.86 549.973C1523.24 549.931 1519.81 541.827 1513.24 539.552C1512.58 539.792 1511.91 540.032 1511.25 540.272C1505.95 551.637 1503.52 559.95 1497.03 570.834C1493.03 557.207 1495.88 554.602 1486.64 541.579C1471.45 549.194 1434.02 573.128 1427.52 587.859L1428 589.071C1431.51 589.24 1450.03 581.306 1455.52 579.756C1480.22 572.782 1494.96 584.86 1515.11 596.238C1537.18 608.7 1562.42 604.29 1585.69 597.164C1575.72 585.9 1569.57 578.991 1561.72 565.95C1585.19 572.743 1607.13 587.419 1632.26 591.52C1635.85 592.104 1668.91 599.168 1669.55 599.817C1666.74 602.5 1629.96 614.644 1622.99 617.457C1601.69 626.049 1586.05 635.924 1566.78 647.787C1572.26 636.636 1578.68 625.869 1584.29 614.659C1574.8 616.996 1565.13 621.827 1555.65 623.343C1496.5 632.798 1483.07 572.271 1429.28 623.827C1446.55 629.954 1465.37 639.758 1482.81 646.232C1484.37 646.811 1487.21 646.421 1488.86 645.767C1497.25 642.423 1498.97 634.92 1508.34 632.638C1509.26 634.329 1509.81 634.724 1509.17 637.14C1503.56 658.463 1490.78 674.218 1472.52 686.123C1468.58 688.687 1460.9 693.62 1456.77 692.822L1456.43 690.812C1459.48 683.565 1463.46 672.765 1455.43 667.375C1449.18 661.974 1419.24 659.223 1412.54 663.814C1387.92 680.691 1358.52 679.183 1333.64 662.684C1317.49 651.973 1318.6 639.153 1315.82 620.56C1308.37 633.023 1301.78 649.831 1307.72 664.197C1313.66 678.574 1328.7 683.694 1342.04 688.912C1321.81 740.857 1375.47 759.036 1409.74 781.71C1475.26 825.045 1521.81 887.645 1517.67 969.245C1517.49 972.707 1517.69 976.825 1514.94 979.357C1505.25 978.153 1462.93 943.642 1450.06 936.165L1448.86 935.474C1442.53 929.614 1422.97 921.392 1414.52 918.244C1419.36 923.415 1433.17 935.131 1439.04 940.314C1448.92 949.037 1473.7 977.496 1482.82 982.852C1500.94 999.812 1527.82 1012.67 1553.06 1011.8C1592.22 1010.45 1642.57 981.796 1636.46 936.551C1634.53 922.239 1631.08 916.761 1634.96 902.283C1642.23 895.334 1648.3 891.617 1658.16 888.83C1661.14 878.314 1663.49 874.131 1673.53 868.329C1683.92 862.326 1706.76 859.588 1715.26 869.76C1707.92 872.466 1688.87 875.13 1690.8 886.635C1693.08 889.15 1693.29 890.24 1697.67 890.188C1722.3 889.895 1725.69 884.699 1745.04 903.242C1747.79 905.883 1749.68 908.232 1750.37 912.07L1749.35 914.108C1737.35 914.567 1712.98 911.041 1704.51 921.878C1692.77 936.89 1693.49 964.051 1686.61 981.885C1679.25 1000.99 1657.87 1011.53 1659.92 1033.35C1660.41 1038.18 1660.75 1042.52 1661.34 1047.35C1657.06 1047.14 1651.72 1042.85 1646.82 1041.47C1624.46 1034.49 1605.36 1046.27 1589.78 1061.21C1555.29 1094.27 1526.81 1118.31 1476.16 1114.63C1427.82 1111.13 1384.94 1092.17 1361.2 1048.04C1360.05 1045.91 1357.75 1040.68 1356.67 1039.18C1354.39 1030.82 1349.07 1016.37 1346.22 1007.37C1345.54 1018.62 1344.68 1028.58 1348.11 1039.39L1348.29 1040.32C1356.47 1080.92 1397.74 1109.95 1434 1123.91C1438.77 1125.75 1455.25 1130.02 1456.91 1133.76C1453.13 1139.43 1443.16 1146.31 1437.48 1150.71C1404.31 1176.41 1370.25 1195.45 1330.84 1210.22L1321.99 1202.78C1312.48 1192.88 1274.3 1164.2 1263.45 1162.5C1264.29 1164.65 1267.02 1167.02 1268.87 1168.36C1283.68 1179.09 1291.69 1185.15 1303.83 1199.73C1308.64 1205.58 1312.98 1211.8 1316.8 1218.33C1318.01 1220.36 1322.87 1230.24 1323.48 1230.83C1324.39 1233.11 1325.21 1235.42 1325.93 1237.76C1346.13 1303.64 1310.16 1369.14 1249.82 1395.43C1232.26 1403.08 1201.63 1411.01 1192.87 1428.68C1181.33 1451.99 1205.1 1479.54 1225.9 1488.44C1252.32 1500.66 1268.4 1492.44 1293.15 1483.47C1302.76 1487.62 1309.41 1492.25 1316.44 1496.26C1320.41 1498.53 1325.15 1494.78 1336.31 1502.72C1354.91 1515.97 1358.47 1536.15 1362.32 1557.16C1349.82 1550.23 1341.29 1545.96 1327.7 1541.94C1313.33 1549.62 1296.86 1558.71 1280.11 1559.63C1259.76 1560.75 1248.08 1545.19 1225.83 1544.31C1208.8 1543.64 1198.3 1548 1181.81 1550.67C1170.77 1552.46 1160.91 1551.82 1149.85 1551.05C1159.79 1543.89 1169.6 1541.34 1171.12 1526.94C1175.42 1486.36 1138.93 1447.82 1106.6 1428.89C1092.23 1420.47 1072.68 1416.37 1057 1413.35C1087.06 1392.41 1129.71 1388.33 1158.6 1367.96C1183.97 1350.07 1165.52 1285.01 1149.22 1267.08C1146.23 1271.03 1152.48 1299.17 1152.6 1305.04C1153.98 1371.99 1111.15 1375.16 1059.85 1389.92C1041.06 1395.33 1039.99 1415.28 1041.72 1431.92C1061.58 1434.87 1079.38 1435.13 1097.88 1444.76C1101.07 1445.91 1115.74 1452.81 1113.47 1457.6C1076.46 1535.86 958.625 1580.21 879.852 1579.42C813.754 1579 750.562 1552.2 704.321 1504.96C629.229 1427.54 627.184 1329.55 640.397 1230.44C648.636 1168.64 637.968 1095.3 592.478 1048.52C590.385 1056.22 589.246 1068.44 587.99 1076.75C585.93 1091.04 582.979 1105.18 579.152 1119.09C566.528 1037.17 533.364 974.79 470.453 920.054C458.039 909.254 443.843 901.279 431.16 890.827C444.532 893.127 473.141 905.259 485.795 911.163C557.091 944.428 625.941 976.072 683.241 1031.44C673.335 1029.49 661.136 1025.45 651.101 1022.83C638.759 1019.6 627.569 1017.37 615.011 1014.99C620.538 1024.9 629.671 1036.85 636.274 1046.57C649.693 1066.09 660.606 1087.22 668.756 1109.47C682.914 1148.64 687.151 1187.4 686.267 1228.74C684.654 1281.21 677.773 1332.77 700.169 1382.51C733.062 1455.56 814.505 1515.37 897.116 1493.27C929.614 1484.57 955.827 1463.18 978.61 1439.29C1006.32 1409.87 1029.47 1376.45 1047.28 1340.17C1056.34 1321.35 1064.33 1299.97 1072.01 1280.45C1095.3 1221.2 1125.87 1168.83 1173.28 1125.65C1200.57 1100.8 1257.64 1061.65 1270.21 1027.27C1248.9 1033.16 1230.04 1037.45 1209.46 1046.19C1153.06 1070.13 1109.31 1101.12 1073.6 1151.86C1073.93 1145.05 1073.83 1138.22 1073.29 1131.42C1066.65 1050.82 995.104 1009.06 920.696 1041.47C893.864 1053.16 876.306 1071.59 857.945 1093.84C884.117 992.352 849.972 877.739 737.623 851.955C701.266 843.611 669.745 847.905 634.024 855.705C647.429 818.79 657.596 772.108 648.119 733.101C620.451 619.221 483.453 568.398 376.972 581.028C356.321 583.478 334.792 589.471 314.326 594.005ZM1378.94 565.835C1385.14 563.743 1388.98 562.234 1392.23 556.094C1394.85 551.125 1395.34 545.309 1393.61 539.969C1391.81 534.372 1387.7 529.816 1382.32 527.459C1377.71 525.438 1374.08 525.579 1369.24 526.126C1363.16 529.17 1358.57 532.171 1356.2 538.989C1354.35 544.148 1354.81 549.853 1357.45 554.651C1361.68 562.34 1370.4 566.216 1378.94 565.835ZM1486.44 502.407C1491.13 502.048 1495.83 501.735 1500.53 501.468C1494.59 495.09 1490.71 489.557 1481.34 489.763C1476.36 494.263 1474.32 498.741 1472.15 505.076L1472.52 507.132C1475.64 507.66 1481.79 504.018 1486.44 502.407Z"/>
+          <path fill="currentColor" d="M1396.9 1201.92C1411.43 1204.32 1430.98 1215.8 1442.19 1225.95C1469.04 1250.27 1469.99 1287.04 1452.42 1317.09C1434.25 1346.92 1409.3 1363.71 1409.73 1402.02C1410.27 1449.88 1470.6 1492.86 1516.1 1479.59C1524.68 1477.08 1533.7 1465.29 1545.8 1465.85C1558.69 1466.44 1566.58 1476.89 1574.83 1485.38C1605.32 1490.52 1613.5 1531.8 1617.11 1557.68C1605.91 1551.52 1594.76 1542.57 1582.29 1539.03C1563.79 1533.77 1560.51 1544.98 1546.92 1552.43L1545.61 1553.14C1514.36 1564.5 1511.11 1543.72 1485.82 1542.35C1471.85 1541.59 1441.76 1549.49 1426.27 1552.68C1435 1535.99 1432.59 1526.05 1423.71 1509.8C1411.62 1487.66 1389.02 1467.88 1364.66 1460.76C1335.47 1452.22 1315.59 1463.11 1291 1477.13C1317.78 1428.47 1339.61 1436.65 1316.92 1374.77C1331.73 1356.03 1345.27 1348.53 1354.7 1322.52C1365.31 1293.27 1361.65 1258.3 1349.11 1230.42C1367.47 1220.17 1379.99 1217.18 1396.9 1201.92Z"/>
+        </g>
+        <text x="157" y="82" font-family="'Cinzel', serif" font-size="58" font-weight="700" fill="currentColor" letter-spacing="4">ALFRED</text>
+      </svg>
+    </div>
+    <div class="header-right">
+      <!-- Toggle dark/light mode -->
+      <!-- Link para o Data Explorer -->
+      <a href="http://localhost:8001/explorer" id="explorer-btn" aria-label="Data Explorer" title="Data Explorer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
+        </svg>
+      </a>
+      <button id="theme-toggle" aria-label="Alternar tema">
+        <!-- Moon: visível em light mode -->
+        <svg id="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <!-- Sun: visível em dark mode -->
+        <svg id="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Chat wrapper -->
+  <div id="chat-wrapper">
+
+    <!-- Welcome screen -->
+    <div id="welcome-screen">
+      <div style="display:flex; justify-content:center; margin-bottom:var(--space-4);">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 128" role="img" aria-label="Alfred"
+             style="height:60px; width:auto; color:var(--brand-accent);">
+          <g transform="translate(12, 14) scale(0.0898) translate(-314, -467)">
+            <path fill="currentColor" d="M314.326 594.005C477.203 482.434 664.755 433.335 858.327 490.718C964.282 522.127 1057.62 581.699 1128.55 666.642C1136.8 676.523 1152.27 693.644 1158.02 704.249C1127.39 693.403 1102.52 686.347 1081.04 716.837C1047.51 764.446 1073.81 829.846 1117.37 860.669C1170.13 897.994 1234.52 908.621 1297.52 900.118C1304.23 899.213 1327.53 894.069 1330.93 889.451C1330.67 886.577 1329.63 884.172 1327.63 882.118C1309.31 863.248 1291.35 845.075 1273.96 825.27C1273.69 835.184 1275.81 847.754 1276.25 858.734C1243 822.899 1242.83 792.446 1235.97 748.406C1229.68 758.561 1221.25 782.531 1216.17 794.877C1202.37 759.392 1193.94 718.355 1211.17 681.685C1214.57 674.445 1225.42 664.32 1228.27 655.891L1227.2 655.145C1213.19 660.75 1206.34 669.461 1195.69 680.033C1195.69 671.675 1197.11 663.379 1199.88 655.495C1212.73 618.46 1241.26 601.898 1274.64 585.939C1213.9 582.298 1186.89 574.589 1180.12 508.978C1187.8 519.225 1196.15 531.699 1207.25 537.844C1242.79 558.044 1276.57 535.227 1307.71 518.449C1337.83 502.224 1373.65 489.177 1405.63 508.11C1414.7 508.034 1459.38 500.736 1463.94 494.526C1465.52 488.301 1459.66 482.448 1457.18 475.467L1458.38 474.036C1468.84 470.996 1483.57 475.69 1493.3 479.518C1511.9 486.837 1536.88 530.899 1526.86 549.973C1523.24 549.931 1519.81 541.827 1513.24 539.552C1512.58 539.792 1511.91 540.032 1511.25 540.272C1505.95 551.637 1503.52 559.95 1497.03 570.834C1493.03 557.207 1495.88 554.602 1486.64 541.579C1471.45 549.194 1434.02 573.128 1427.52 587.859L1428 589.071C1431.51 589.24 1450.03 581.306 1455.52 579.756C1480.22 572.782 1494.96 584.86 1515.11 596.238C1537.18 608.7 1562.42 604.29 1585.69 597.164C1575.72 585.9 1569.57 578.991 1561.72 565.95C1585.19 572.743 1607.13 587.419 1632.26 591.52C1635.85 592.104 1668.91 599.168 1669.55 599.817C1666.74 602.5 1629.96 614.644 1622.99 617.457C1601.69 626.049 1586.05 635.924 1566.78 647.787C1572.26 636.636 1578.68 625.869 1584.29 614.659C1574.8 616.996 1565.13 621.827 1555.65 623.343C1496.5 632.798 1483.07 572.271 1429.28 623.827C1446.55 629.954 1465.37 639.758 1482.81 646.232C1484.37 646.811 1487.21 646.421 1488.86 645.767C1497.25 642.423 1498.97 634.92 1508.34 632.638C1509.26 634.329 1509.81 634.724 1509.17 637.14C1503.56 658.463 1490.78 674.218 1472.52 686.123C1468.58 688.687 1460.9 693.62 1456.77 692.822L1456.43 690.812C1459.48 683.565 1463.46 672.765 1455.43 667.375C1449.18 661.974 1419.24 659.223 1412.54 663.814C1387.92 680.691 1358.52 679.183 1333.64 662.684C1317.49 651.973 1318.6 639.153 1315.82 620.56C1308.37 633.023 1301.78 649.831 1307.72 664.197C1313.66 678.574 1328.7 683.694 1342.04 688.912C1321.81 740.857 1375.47 759.036 1409.74 781.71C1475.26 825.045 1521.81 887.645 1517.67 969.245C1517.49 972.707 1517.69 976.825 1514.94 979.357C1505.25 978.153 1462.93 943.642 1450.06 936.165L1448.86 935.474C1442.53 929.614 1422.97 921.392 1414.52 918.244C1419.36 923.415 1433.17 935.131 1439.04 940.314C1448.92 949.037 1473.7 977.496 1482.82 982.852C1500.94 999.812 1527.82 1012.67 1553.06 1011.8C1592.22 1010.45 1642.57 981.796 1636.46 936.551C1634.53 922.239 1631.08 916.761 1634.96 902.283C1642.23 895.334 1648.3 891.617 1658.16 888.83C1661.14 878.314 1663.49 874.131 1673.53 868.329C1683.92 862.326 1706.76 859.588 1715.26 869.76C1707.92 872.466 1688.87 875.13 1690.8 886.635C1693.08 889.15 1693.29 890.24 1697.67 890.188C1722.3 889.895 1725.69 884.699 1745.04 903.242C1747.79 905.883 1749.68 908.232 1750.37 912.07L1749.35 914.108C1737.35 914.567 1712.98 911.041 1704.51 921.878C1692.77 936.89 1693.49 964.051 1686.61 981.885C1679.25 1000.99 1657.87 1011.53 1659.92 1033.35C1660.41 1038.18 1660.75 1042.52 1661.34 1047.35C1657.06 1047.14 1651.72 1042.85 1646.82 1041.47C1624.46 1034.49 1605.36 1046.27 1589.78 1061.21C1555.29 1094.27 1526.81 1118.31 1476.16 1114.63C1427.82 1111.13 1384.94 1092.17 1361.2 1048.04C1360.05 1045.91 1357.75 1040.68 1356.67 1039.18C1354.39 1030.82 1349.07 1016.37 1346.22 1007.37C1345.54 1018.62 1344.68 1028.58 1348.11 1039.39L1348.29 1040.32C1356.47 1080.92 1397.74 1109.95 1434 1123.91C1438.77 1125.75 1455.25 1130.02 1456.91 1133.76C1453.13 1139.43 1443.16 1146.31 1437.48 1150.71C1404.31 1176.41 1370.25 1195.45 1330.84 1210.22L1321.99 1202.78C1312.48 1192.88 1274.3 1164.2 1263.45 1162.5C1264.29 1164.65 1267.02 1167.02 1268.87 1168.36C1283.68 1179.09 1291.69 1185.15 1303.83 1199.73C1308.64 1205.58 1312.98 1211.8 1316.8 1218.33C1318.01 1220.36 1322.87 1230.24 1323.48 1230.83C1324.39 1233.11 1325.21 1235.42 1325.93 1237.76C1346.13 1303.64 1310.16 1369.14 1249.82 1395.43C1232.26 1403.08 1201.63 1411.01 1192.87 1428.68C1181.33 1451.99 1205.1 1479.54 1225.9 1488.44C1252.32 1500.66 1268.4 1492.44 1293.15 1483.47C1302.76 1487.62 1309.41 1492.25 1316.44 1496.26C1320.41 1498.53 1325.15 1494.78 1336.31 1502.72C1354.91 1515.97 1358.47 1536.15 1362.32 1557.16C1349.82 1550.23 1341.29 1545.96 1327.7 1541.94C1313.33 1549.62 1296.86 1558.71 1280.11 1559.63C1259.76 1560.75 1248.08 1545.19 1225.83 1544.31C1208.8 1543.64 1198.3 1548 1181.81 1550.67C1170.77 1552.46 1160.91 1551.82 1149.85 1551.05C1159.79 1543.89 1169.6 1541.34 1171.12 1526.94C1175.42 1486.36 1138.93 1447.82 1106.6 1428.89C1092.23 1420.47 1072.68 1416.37 1057 1413.35C1087.06 1392.41 1129.71 1388.33 1158.6 1367.96C1183.97 1350.07 1165.52 1285.01 1149.22 1267.08C1146.23 1271.03 1152.48 1299.17 1152.6 1305.04C1153.98 1371.99 1111.15 1375.16 1059.85 1389.92C1041.06 1395.33 1039.99 1415.28 1041.72 1431.92C1061.58 1434.87 1079.38 1435.13 1097.88 1444.76C1101.07 1445.91 1115.74 1452.81 1113.47 1457.6C1076.46 1535.86 958.625 1580.21 879.852 1579.42C813.754 1579 750.562 1552.2 704.321 1504.96C629.229 1427.54 627.184 1329.55 640.397 1230.44C648.636 1168.64 637.968 1095.3 592.478 1048.52C590.385 1056.22 589.246 1068.44 587.99 1076.75C585.93 1091.04 582.979 1105.18 579.152 1119.09C566.528 1037.17 533.364 974.79 470.453 920.054C458.039 909.254 443.843 901.279 431.16 890.827C444.532 893.127 473.141 905.259 485.795 911.163C557.091 944.428 625.941 976.072 683.241 1031.44C673.335 1029.49 661.136 1025.45 651.101 1022.83C638.759 1019.6 627.569 1017.37 615.011 1014.99C620.538 1024.9 629.671 1036.85 636.274 1046.57C649.693 1066.09 660.606 1087.22 668.756 1109.47C682.914 1148.64 687.151 1187.4 686.267 1228.74C684.654 1281.21 677.773 1332.77 700.169 1382.51C733.062 1455.56 814.505 1515.37 897.116 1493.27C929.614 1484.57 955.827 1463.18 978.61 1439.29C1006.32 1409.87 1029.47 1376.45 1047.28 1340.17C1056.34 1321.35 1064.33 1299.97 1072.01 1280.45C1095.3 1221.2 1125.87 1168.83 1173.28 1125.65C1200.57 1100.8 1257.64 1061.65 1270.21 1027.27C1248.9 1033.16 1230.04 1037.45 1209.46 1046.19C1153.06 1070.13 1109.31 1101.12 1073.6 1151.86C1073.93 1145.05 1073.83 1138.22 1073.29 1131.42C1066.65 1050.82 995.104 1009.06 920.696 1041.47C893.864 1053.16 876.306 1071.59 857.945 1093.84C884.117 992.352 849.972 877.739 737.623 851.955C701.266 843.611 669.745 847.905 634.024 855.705C647.429 818.79 657.596 772.108 648.119 733.101C620.451 619.221 483.453 568.398 376.972 581.028C356.321 583.478 334.792 589.471 314.326 594.005ZM1378.94 565.835C1385.14 563.743 1388.98 562.234 1392.23 556.094C1394.85 551.125 1395.34 545.309 1393.61 539.969C1391.81 534.372 1387.7 529.816 1382.32 527.459C1377.71 525.438 1374.08 525.579 1369.24 526.126C1363.16 529.17 1358.57 532.171 1356.2 538.989C1354.35 544.148 1354.81 549.853 1357.45 554.651C1361.68 562.34 1370.4 566.216 1378.94 565.835ZM1486.44 502.407C1491.13 502.048 1495.83 501.735 1500.53 501.468C1494.59 495.09 1490.71 489.557 1481.34 489.763C1476.36 494.263 1474.32 498.741 1472.15 505.076L1472.52 507.132C1475.64 507.66 1481.79 504.018 1486.44 502.407Z"/>
+            <path fill="currentColor" d="M1396.9 1201.92C1411.43 1204.32 1430.98 1215.8 1442.19 1225.95C1469.04 1250.27 1469.99 1287.04 1452.42 1317.09C1434.25 1346.92 1409.3 1363.71 1409.73 1402.02C1410.27 1449.88 1470.6 1492.86 1516.1 1479.59C1524.68 1477.08 1533.7 1465.29 1545.8 1465.85C1558.69 1466.44 1566.58 1476.89 1574.83 1485.38C1605.32 1490.52 1613.5 1531.8 1617.11 1557.68C1605.91 1551.52 1594.76 1542.57 1582.29 1539.03C1563.79 1533.77 1560.51 1544.98 1546.92 1552.43L1545.61 1553.14C1514.36 1564.5 1511.11 1543.72 1485.82 1542.35C1471.85 1541.59 1441.76 1549.49 1426.27 1552.68C1435 1535.99 1432.59 1526.05 1423.71 1509.8C1411.62 1487.66 1389.02 1467.88 1364.66 1460.76C1335.47 1452.22 1315.59 1463.11 1291 1477.13C1317.78 1428.47 1339.61 1436.65 1316.92 1374.77C1331.73 1356.03 1345.27 1348.53 1354.7 1322.52C1365.31 1293.27 1361.65 1258.3 1349.11 1230.42C1367.47 1220.17 1379.99 1217.18 1396.9 1201.92Z"/>
+          </g>
+          <text x="157" y="82" font-family="'Cinzel', serif" font-size="58" font-weight="700" fill="currentColor" letter-spacing="4">ALFRED</text>
+        </svg>
+      </div>
+      <p style="font-size:var(--fs-base); text-align:center; max-width:380px; line-height:var(--lh-relaxed); margin:0 auto;">
+        O analista de dados do comercial da Acme.<br><br>
+        Pergunte em linguagem natural sobre churn, pipeline, leads ou receita.
+      </p>
+      <div id="suggestion-chips">
+        <button class="suggestion-chip">Taxa de churn do mês atual</button>
+        <button class="suggestion-chip">Pipeline do Closer esta semana</button>
+        <button class="suggestion-chip">Produtores em pré-churn por gestor</button>
+        <button class="suggestion-chip">LTV médio por cluster</button>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="messages"></div>
+
+    <!-- Fade overlay topo — emerge imagem suavemente do header (empty state) -->
+    <div class="fade-overlay-top"></div>
+
+    <!-- Fade overlay — gradiente sobre as mensagens, abaixo do input -->
+    <div class="fade-overlay"></div>
+
+    <!-- Scroll anchor — aparece quando o usuário rolou para cima -->
+    <button id="scroll-anchor-btn" aria-label="Ir para o final" style="display:none">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 5v14M5 12l7 7 7-7"/>
+      </svg>
+    </button>
+
+    <!-- Input bar — flutuante -->
+    <div id="input-bar">
+      <form id="input-form" onsubmit="return false;">
+        <textarea
+          id="user-input"
+          rows="1"
+          placeholder="Pergunte sobre o comercial da Acme..."
+          autocomplete="off"
+        ></textarea>
+        <button id="send-btn" type="submit" aria-label="Enviar">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+        <button id="stop-btn" type="button" aria-label="Parar geração" style="display:none">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="4" width="16" height="16" rx="2"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+  </div><!-- /#chat-wrapper -->
+
+  </div><!-- /#main -->
+
+  <!-- Modal — renomear conversa -->
+  <div id="modal-overlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <p id="modal-title" class="modal-title">Novo nome da conversa</p>
+      <input id="modal-input" class="modal-input" type="text" />
+      <div class="modal-actions">
+        <button id="modal-cancel" class="modal-btn modal-btn-secondary">Cancelar</button>
+        <button id="modal-ok" class="modal-btn modal-btn-primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal — confirmação de exclusão -->
+  <div id="confirm-overlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <p id="confirm-title" class="modal-title"></p>
+      <div class="modal-actions">
+        <button id="confirm-cancel" class="modal-btn modal-btn-secondary">Cancelar</button>
+        <button id="confirm-ok" class="modal-btn modal-btn-primary" style="background:var(--danger);">Apagar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Estado global ─────────────────────────────────────────────
+    let currentChatId = null;
+    let WELCOME_SCREEN_HTML = '';
+
+    // ── marked.js config ──────────────────────────────────────────
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+    });
+
+    // ── DOM refs ──────────────────────────────────────────────────
+    const messagesEl     = document.getElementById('messages');
+    const inputEl        = document.getElementById('user-input');
+    const sendBtn        = document.getElementById('send-btn');
+    const stopBtn        = document.getElementById('stop-btn');
+    const chatListEl     = document.getElementById('chat-list');
+    const chatSearchInput = document.getElementById('chat-search-input');
+    const sidebarEl      = document.getElementById('sidebar');
+    const overlayEl      = document.getElementById('sidebar-overlay');
+    const newChatBtn     = document.getElementById('new-chat-btn');
+    const headerMenuBtn  = document.getElementById('header-menu-btn');
+    const sidebarMenuBtn = document.getElementById('sidebar-menu-btn');
+    const scrollAnchorBtn = document.getElementById('scroll-anchor-btn');
+
+    let _activeAbortController = null;
+    let _userScrolledUp = false;
+    let _lastSentMessage = null;
+    let _toastTimeout = null;
+
+    // ── Scroll listener — detecta se o usuário rolou para cima ───
+    messagesEl.addEventListener('scroll', () => {
+      const nearBottom =
+        messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+      _userScrolledUp = !nearBottom;
+      scrollAnchorBtn.style.display = nearBottom ? 'none' : 'flex';
+    });
+
+    scrollAnchorBtn.addEventListener('click', () => {
+      _userScrolledUp = false;
+      scrollToBottom(true);
+    });
+
+    // ── Auto-resize textarea ──────────────────────────────────────
+    inputEl.addEventListener('input', () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px';
+    });
+
+    // ── Enter to send, Shift+Enter for newline ────────────────────
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    });
+
+    sendBtn.addEventListener('click', handleSend);
+
+    // ── 5. Alfred avatar — wyvern SVG (mesmo símbolo do favicon) ──
+    const ALFRED_AVATAR_SVG = `<svg width="32" height="32" viewBox="402 431 1438 1235" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;display:block;" aria-hidden="true">
+  <path fill="var(--brand-accent)" d="M1201.47 434.409C1246.04 424.568 1299.69 431.019 1338.03 455.812C1398.2 494.721 1419.33 572.682 1416.09 640.637C1415.77 647.265 1416.44 653.14 1414.03 659.514L1412.83 660.179C1407.01 656.145 1404.18 652.278 1399.32 648.498C1389.93 641.191 1376.3 630.209 1366.15 624.457C1353.26 664.064 1352.14 676.609 1324.83 710.395C1320.45 680.206 1314.1 664.59 1298.5 638.638C1237.04 663.12 1181.92 701.186 1137.25 749.987C1128.77 759.332 1118.78 770.718 1112.06 781.223C1174.62 751.489 1233.4 730.312 1303.41 754.324C1324.36 761.509 1354.22 778.862 1374.08 789.876C1456.98 835.861 1499.79 818.235 1582.75 798.733C1555.65 767.826 1534.02 738.129 1511.56 703.623C1530.31 711.2 1549.74 722.075 1569.07 730.26C1614.82 749.635 1661.78 766.033 1709.65 779.35C1744.64 789.437 1780.82 796.8 1816.47 804.28C1822.92 805.634 1829.21 806.198 1835.42 808.527C1834.06 810.884 1828.68 812.193 1825.86 812.909C1738.2 835.192 1650.78 870.421 1572.9 916.305C1554.67 927.043 1539.71 939.585 1522.49 950.632C1542.25 909.991 1557.85 883.886 1582.35 845.783C1500.22 883.024 1451.23 892.29 1362.53 859.489C1344.71 852.897 1323.32 842.582 1307.08 833.543C1272.04 814.048 1247.74 801.673 1208.57 819.997C1185.63 830.727 1148.74 855.157 1129.82 872.411C1147.08 880.247 1282.68 939.372 1291.38 940.044C1307.64 933.436 1338.24 903.421 1351.32 890.778C1366.23 985.48 1281.18 1053.88 1200.1 1081.03C1211.64 1054.01 1233.1 1009.69 1192.34 995.85C1164.38 986.168 1133.16 979.227 1103.37 983.07C1076.07 986.593 1052.7 1003.11 1027.91 1015.1C960.582 1047.67 850.463 1024.04 815.988 953.653C802.485 926.083 802.029 891.01 801.883 860.331C783.084 886.087 766.225 936.699 771.226 969.095C780.106 1026.61 822.712 1046.91 874.358 1062.53C808.161 1208.96 996.864 1284.22 1088.16 1351.08C1114.3 1370.23 1140.68 1389.44 1165.62 1410.12C1219.46 1454.77 1265.44 1508.11 1301.67 1567.93C1315.61 1591.23 1341.06 1639.55 1346.97 1665.97L997.812 1665.44L896.754 1665.36C881.409 1665.43 856.243 1666.35 841.629 1665.48C816.549 1602.61 769.369 1566.18 723.632 1519.58C704.507 1500.09 691.432 1482.16 675.032 1460.89C675.289 1480.38 676.799 1499.83 679.551 1519.13C681.901 1534.98 685.842 1552.7 686.724 1568.36C598.454 1481.03 563.055 1377.94 562.351 1254.65L562.324 1246.22C533.316 1296.63 521.992 1323.17 506.162 1378.27C462.045 1289.4 437.772 1189.29 470.542 1092.07C483.829 1052.22 504.46 1015.21 531.37 982.956C537.577 976.618 544.382 968.921 550.409 962.339C542.574 964.384 538.776 966.24 531.881 969.942C506.903 982.93 489.364 994.634 468.501 1013.88C459.831 1021.88 449.877 1032.25 441.115 1039.64C442.904 1018.12 449.54 996.057 456.594 975.75C476.092 919.625 503.367 877.299 548.613 838.876C590.358 803.426 628.12 784.621 677.009 760.411C658.77 760.37 640.34 762.552 621.871 761.844C562.734 759.58 503.675 747.893 460.172 704.501C418.528 662.964 403.483 604.888 402.163 547.507C402.052 542.654 402.284 535.421 402.747 530.618C430.124 580.485 462.132 621.446 519.516 638.306C586.55 658.002 656.422 632.631 714.914 599.981C805.555 549.158 907.095 486.814 1015.28 518.551C1023.35 521.092 1033.6 524.074 1041 528.166C1055.87 536.391 1074.29 539.133 1091 533.957C1134.19 520.578 1184.33 507.781 1226.42 491.876C1220.89 466.745 1214.49 456.84 1201.47 434.409ZM958.535 592.758C928.278 598.243 908.207 627.232 913.722 657.484C919.236 687.736 948.245 707.779 978.491 702.236C1008.7 696.7 1028.71 667.739 1023.2 637.528C1017.69 607.317 988.751 587.279 958.535 592.758ZM1251.04 533.22C1265.6 521.551 1271.41 519.513 1289.63 516.276C1306.36 515.654 1315.35 517.007 1331.78 519.239C1325.85 505.043 1314.51 489.439 1300.03 483.245C1294.74 480.939 1288.97 479.943 1283.22 480.342C1257.3 488.473 1254.83 509.663 1251.04 533.22Z"/>
+</svg>`;
+
+    // ── 9. Mapa de status para badges ─────────────────────────────
+    const statusMap = {
+      'ativo':     'badge-ativo',
+      'pré-churn': 'badge-prechurn',
+      'pre-churn': 'badge-prechurn',
+      'churn':     'badge-churn',
+      'inativo':   'badge-inativo',
+    };
+
+    // ── Add message bubble ────────────────────────────────────────
+    function addBubble(role, content, citation) {
+      if (role === 'user' && messagesEl.children.length > 0) {
+        const sep = document.createElement('hr');
+        sep.className = 'round-separator';
+        messagesEl.appendChild(sep);
+      }
+
+      const row = document.createElement('div');
+      row.className = `bubble-row ${role}`;
+
+      if (role === 'alfred') {
+        const avatar = document.createElement('div');
+        avatar.className = 'alfred-avatar';
+        avatar.innerHTML = ALFRED_AVATAR_SVG;
+        row.appendChild(avatar);
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = `bubble ${role}`;
+
+      if (role === 'alfred') {
+        let mainContent = content;
+        let citationText = citation || null;
+
+        const sep = '\n\n---\n_';
+        const sepIdx = content.lastIndexOf(sep);
+        if (sepIdx !== -1) {
+          mainContent = content.slice(0, sepIdx);
+          citationText = content.slice(sepIdx + sep.length).replace(/_$/, '').trim();
+        }
+
+        bubble.innerHTML = marked.parse(mainContent);
+        bubble.dataset.markdown = mainContent;
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.setAttribute('aria-label', 'Copiar resposta');
+        copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+        copyBtn.addEventListener('click', () => {
+          const text = bubble.dataset.markdown || bubble.innerText;
+          navigator.clipboard.writeText(text).then(() => {
+            copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
+            copyBtn.style.color = 'var(--success)';
+            setTimeout(() => {
+              copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+              copyBtn.style.color = '';
+            }, 1500);
+          });
+        });
+        row.appendChild(copyBtn);
+
+        bubble.querySelectorAll('td').forEach(td => {
+          const val = td.textContent.trim().toLowerCase();
+          if (statusMap[val]) {
+            td.innerHTML = `<span class="badge ${statusMap[val]}">${td.textContent.trim()}</span>`;
+          }
+        });
+
+        bubble.querySelectorAll('.alfred-chart').forEach(el => {
+          try {
+            let configStr = el.getAttribute('data-config');
+            configStr = configStr.replace(
+              /"callback":"__SUFFIX_([^"]*?)__"/g,
+              (_, sfx) => `"callback": function(v){ return v + '${sfx}'; }`
+            );
+            const config = (new Function('return ' + configStr))();
+            const canvas = el.querySelector('canvas');
+            new Chart(canvas, config);
+          } catch(e) {
+            console.warn('alfred-chart init failed', e);
+          }
+        });
+
+        if (citationText) {
+          const cit = document.createElement('div');
+          cit.className = 'response-footnote';
+          const lines = citationText.split('\n').filter(l => l.trim());
+          cit.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><div>${lines.map(l => `<p>${l}</p>`).join('')}</div>`;
+          bubble.appendChild(cit);
+        }
+      } else {
+        bubble.textContent = content;
+      }
+
+      row.appendChild(bubble);
+      messagesEl.appendChild(row);
+      scrollToBottom();
+      return row;
+    }
+
+    // ── Loading indicator ─────────────────────────────────────────
+    function addLoading() {
+      const row = document.createElement('div');
+      row.className = 'bubble-row alfred';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'alfred-avatar';
+      avatar.innerHTML = ALFRED_AVATAR_SVG;
+      row.appendChild(avatar);
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble alfred loading-bubble';
+      bubble.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+
+      row.appendChild(bubble);
+      messagesEl.appendChild(row);
+      scrollToBottom();
+      return { row, bubble };
+    }
+
+    function setLoadingMessage(bubble, text) {
+      bubble.innerHTML = `<span style="color:var(--text-muted);font-size:var(--fs-sm)">${text}</span>`;
+    }
+
+    // ── Scroll to bottom ──────────────────────────────────────────
+    function scrollToBottom(force = false) {
+      if (force || !_userScrolledUp) {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+    }
+
+    // ── Set loading state ─────────────────────────────────────────
+    function setLoading(loading, chatId) {
+      inputEl.disabled = loading;
+      sendBtn.disabled = loading;
+      if (loading) {
+        sendBtn.style.display = 'none';
+        stopBtn.style.display = 'flex';
+      } else {
+        sendBtn.style.display = 'flex';
+        stopBtn.style.display = 'none';
+        _activeAbortController = null;
+      }
+      if (chatId) {
+        const sidebarItem = chatListEl.querySelector(`[data-chat-id="${chatId}"]`);
+        if (sidebarItem) sidebarItem.classList.toggle('processing', loading);
+      }
+    }
+
+    stopBtn.addEventListener('click', () => {
+      if (_activeAbortController) _activeAbortController.abort();
+    });
+
+    function updateBadge() {}
+
+    // ── Main send handler ─────────────────────────────────────────
+    async function handleSend() {
+      const message = inputEl.value.trim();
+      if (!message) return;
+      _lastSentMessage = message;
+
+      // Garante que há um chat ativo
+      if (!currentChatId) {
+        const chat = await createChat();
+        if (!chat) return;
+      }
+
+      const chatId = currentChatId;          // snapshot imutável para este envio
+      const messageText = message;           // salvo para restaurar no abort
+      const abortController = new AbortController();
+      _activeAbortController = abortController;
+
+      dismissWelcome();
+      addBubble('user', message);
+      scrollToBottom(true);
+
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+
+      setLoading(true, chatId);
+      const { row: loadingRow, bubble: loadingBubble } = addLoading();
+
+      const t15 = setTimeout(() => setLoadingMessage(loadingBubble,
+        '<i>Servidor da Claude está sobrecarregado, isso pode demorar um pouco...</i>'), 15000);
+      const t60 = setTimeout(() => setLoadingMessage(loadingBubble,
+        'Ainda processando... Aguarde mais um momento.'), 60000);
+
+      try {
+        const res = await fetch('/chats/' + chatId + '/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message }),
+          signal: abortController.signal,
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+
+        clearTimeout(t15); clearTimeout(t60);
+        if (chatId !== currentChatId) {
+          const sidebarItem = chatListEl.querySelector(`[data-chat-id="${chatId}"]`);
+          const title = sidebarItem?.querySelector('.chat-item-title')?.textContent ?? 'outro chat';
+          showToast(`Resposta recebida em "${title}"`);
+          setLoading(false, chatId);
+          return;
+        }
+
+        loadingRow.remove();
+
+        if (data.error) {
+          addBubble('alfred', data.error);
+        } else {
+          addBubble('alfred', data.markdown_response);
+          updateBadge(data.data_citation);
+        }
+
+        // Atualiza sidebar imediatamente e depois de 3.5s para pegar título gerado pelo Haiku
+        refreshChatList();
+        setTimeout(() => refreshChatList(), 3500);
+
+      } catch (err) {
+        clearTimeout(t15); clearTimeout(t60);
+        if (chatId !== currentChatId) {
+          setLoading(false, chatId);
+          return;
+        }
+
+        loadingRow.remove();
+        if (err.name === 'AbortError') {
+          inputEl.value = messageText;
+          inputEl.dispatchEvent(new Event('input'));
+        } else {
+          const errorRow = addBubble('alfred',
+            'Desculpe, ocorreu um erro ao processar sua pergunta.');
+          const retryBtn = document.createElement('button');
+          retryBtn.textContent = 'Tentar novamente';
+          retryBtn.style.cssText = `
+            margin-top: var(--space-2);
+            padding: 5px 14px;
+            border-radius: var(--radius-full);
+            border: 1px solid var(--border);
+            background: transparent;
+            font-family: var(--font-sans);
+            font-size: var(--fs-sm);
+            color: var(--brand-accent);
+            cursor: pointer;
+            display: block;
+          `;
+          retryBtn.addEventListener('click', () => {
+            errorRow.remove();
+            if (_lastSentMessage) {
+              inputEl.value = _lastSentMessage;
+              inputEl.dispatchEvent(new Event('input'));
+              handleSend();
+            }
+          });
+          errorRow.querySelector('.bubble.alfred').appendChild(retryBtn);
+          console.error('Erro na requisição:', err);
+        }
+      } finally {
+        setLoading(false, chatId);
+        inputEl.focus();
+      }
+    }
+
+    // ── Toast ─────────────────────────────────────────────────────
+    function showToast(message, duration = 4000) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('visible');
+      clearTimeout(_toastTimeout);
+      _toastTimeout = setTimeout(() => toast.classList.remove('visible'), duration);
+    }
+
+    // ── Sidebar — helpers ─────────────────────────────────────────
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function timeAgo(isoStr) {
+      const d   = new Date(isoStr);
+      const now = new Date();
+      const diff = Math.floor((now - d) / 1000);
+      if (diff < 60)    return 'agora';
+      if (diff < 3600)  return `há ${Math.floor(diff / 60)}m`;
+      if (diff < 86400) return `há ${Math.floor(diff / 3600)}h`;
+      const today = new Date(); today.setHours(0,0,0,0);
+      const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+      if (d >= yesterday && d < today) return 'ontem';
+      return d.toLocaleDateString('pt-BR', { day:'numeric', month:'short' }).replace('.','');
+    }
+
+    function renderEmptyState() {
+      chatListEl.innerHTML = `
+        <div class="chat-list-empty">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted)">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span class="chat-list-empty-title">Nenhuma conversa ainda</span>
+          <span class="chat-list-empty-sub">Clique em + pra começar</span>
+        </div>`;
+    }
+
+    function renderSkeletons() {
+      chatListEl.innerHTML = Array.from({length:3}, () => `
+        <div class="chat-skeleton">
+          <div class="skeleton-line"></div>
+          <div class="skeleton-line short"></div>
+          <div class="skeleton-line xshort"></div>
+        </div>`).join('');
+    }
+
+    function buildChatItem(chat) {
+      const btn = document.createElement('button');
+      btn.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
+      btn.dataset.chatId = chat.id;
+      btn.innerHTML = `
+        <span class="chat-item-title">${escapeHtml(chat.title)}</span>
+        <div class="chat-item-actions">
+          <button class="chat-item-menu-btn" aria-label="Opções">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+            </svg>
+          </button>
+        </div>`;
+      btn.addEventListener('click', (e) => {
+        if (e.target.closest('.chat-item-actions')) return;
+        openChat(chat.id);
+        if (window.innerWidth <= 768) closeSidebar();
+      });
+      btn.querySelector('.chat-item-menu-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openDropdown(chat.id, btn);
+      });
+      return btn;
+    }
+
+    // ── Sidebar — agrupamento temporal ───────────────────────────
+    const ORDER = ['Hoje', 'Ontem', 'Esta semana', 'Mais antigas'];
+
+    function getGroupLabel(isoStr) {
+      const d = new Date(isoStr);
+      const now = new Date();
+      const today = new Date(now); today.setHours(0,0,0,0);
+      const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+      const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 7);
+      if (d >= today)     return 'Hoje';
+      if (d >= yesterday) return 'Ontem';
+      if (d >= weekAgo)   return 'Esta semana';
+      return 'Mais antigas';
+    }
+
+    function _renderGroupedChats(chats) {
+      const groups = {};
+      chats.forEach(chat => {
+        const label = getGroupLabel(chat.updated_at);
+        if (!groups[label]) groups[label] = [];
+        groups[label].push(chat);
+      });
+      ORDER.forEach(label => {
+        if (!groups[label]) return;
+        const heading = document.createElement('div');
+        heading.className = 'chat-group-label';
+        heading.textContent = label;
+        chatListEl.appendChild(heading);
+        groups[label].forEach(chat => chatListEl.appendChild(buildChatItem(chat)));
+      });
+    }
+
+    // ── Sidebar — carrega lista ───────────────────────────────────
+    async function loadChatList() {
+      renderSkeletons();
+      try {
+        const res = await fetch('/chats');
+        if (!res.ok) throw new Error();
+        const chats = await res.json();
+        chatListEl.innerHTML = '';
+        if (!chats.length) { renderEmptyState(); return []; }
+        _renderGroupedChats(chats);
+        return chats;
+      } catch {
+        chatListEl.innerHTML = '';
+        renderEmptyState();
+        return [];
+      }
+    }
+
+    // ── Sidebar — abre um chat ────────────────────────────────────
+    async function openChat(id) {
+      clearChatSearch();
+      _userScrolledUp = false;
+      scrollAnchorBtn.style.display = 'none';
+      document.querySelectorAll('.chat-item').forEach(el =>
+        el.classList.toggle('active', el.dataset.chatId === id));
+      currentChatId = id;
+      messagesEl.innerHTML = '';
+      const welcome = document.getElementById('welcome-screen');
+      if (welcome) welcome.remove();
+      document.getElementById('chat-wrapper').classList.remove('has-messages');
+      try {
+        const res = await fetch('/chats/' + id);
+        if (!res.ok) throw new Error();
+        const chat = await res.json();
+        if (chat.messages.length) {
+          document.getElementById('chat-wrapper').classList.add('has-messages');
+          chat.messages.forEach(msg => {
+            if (msg.role === 'user') addBubble('user', msg.content);
+            else addBubble('alfred', msg.content);
+          });
+        } else {
+          showWelcomeScreen();
+        }
+      } catch {
+        addBubble('alfred', 'Erro ao carregar conversa.');
+      }
+      inputEl.focus();
+    }
+
+    function showWelcomeScreen() {
+      const wrapper = document.getElementById('chat-wrapper');
+      wrapper.classList.remove('has-messages');
+      if (!document.getElementById('welcome-screen') && WELCOME_SCREEN_HTML) {
+        wrapper.insertAdjacentHTML('afterbegin', WELCOME_SCREEN_HTML);
+      }
+    }
+
+    // ── Sidebar — cria novo chat ──────────────────────────────────
+    async function createChat() {
+      try {
+        const res = await fetch('/chats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!res.ok) throw new Error();
+        const chat = await res.json();
+        clearChatSearch();
+        currentChatId = chat.id;
+        const item = buildChatItem({ ...chat, preview: '' });
+        chatListEl.querySelector('.chat-list-empty')?.remove();
+        chatListEl.insertBefore(item, chatListEl.firstChild);
+        document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
+        item.classList.add('active');
+        messagesEl.innerHTML = '';
+        const welcome = document.getElementById('welcome-screen');
+        if (welcome) welcome.remove();
+        showWelcomeScreen();
+        inputEl.focus();
+        return chat;
+      } catch {
+        return null;
+      }
+    }
+
+    // ── Sidebar — move chat pro topo e atualiza título ────────────
+    async function moveToTopAndRefreshTitle(chatId) {
+      try {
+        const [listRes, detailRes] = await Promise.all([
+          fetch('/chats'),
+          fetch('/chats/' + chatId),
+        ]);
+        if (!listRes.ok || !detailRes.ok) return;
+        const [chats, detail] = await Promise.all([listRes.json(), detailRes.json()]);
+        const chatMeta = chats.find(c => c.id === chatId);
+        if (!chatMeta) return;
+        const lastUser = [...detail.messages].reverse().find(m => m.role === 'user');
+        chatMeta.preview = lastUser?.content ?? '';
+        chatMeta.title   = detail.title;
+        const existing = chatListEl.querySelector(`[data-chat-id="${chatId}"]`);
+        if (existing) existing.remove();
+        if (!chatListEl.querySelector('.chat-item') && !chatListEl.querySelector('.chat-skeleton')) {
+          chatListEl.querySelector('.chat-list-empty')?.remove();
+        }
+        const newItem = buildChatItem(chatMeta);
+        chatListEl.insertBefore(newItem, chatListEl.firstChild);
+      } catch {}
+    }
+
+    async function refreshChatList() {
+      try {
+        const res = await fetch('/chats');
+        if (!res.ok) return;
+        const chats = await res.json();
+        chatListEl.innerHTML = '';
+        if (!chats.length) { renderEmptyState(); return; }
+        _renderGroupedChats(chats);
+      } catch {}
+    }
+
+    // ── Sidebar — dropdown de ações ───────────────────────────────
+    function openDropdown(chatId, itemBtn) {
+      document.querySelectorAll('.chat-dropdown').forEach(d => {
+        d.closest('.chat-item-actions')?.classList.remove('open');
+        d.closest('.chat-item')?.style.removeProperty('z-index');
+        d.remove();
+      });
+      const actionsEl = itemBtn.querySelector('.chat-item-actions');
+      actionsEl.classList.add('open');
+      itemBtn.style.zIndex = '2';
+      const dropdown = document.createElement('div');
+      dropdown.className = 'chat-dropdown';
+      dropdown.innerHTML = `
+        <button data-action="rename">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>Renomear
+        </button>
+        <button data-action="delete" class="danger">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6"/>
+            <path d="M10,11v6"/><path d="M14,11v6"/>
+          </svg>Apagar
+        </button>`;
+      itemBtn.querySelector('.chat-item-actions').appendChild(dropdown);
+
+      dropdown.querySelector('[data-action="rename"]').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        actionsEl.classList.remove('open');
+        itemBtn.style.removeProperty('z-index');
+        dropdown.remove();
+        const titleEl = itemBtn.querySelector('.chat-item-title');
+        const newTitle = await showPrompt('Novo nome da conversa', titleEl.textContent);
+        if (!newTitle?.trim() || newTitle.trim() === titleEl.textContent) return;
+        const res = await fetch('/chats/' + chatId, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: newTitle.trim() }),
+        }).catch(() => null);
+        if (res?.ok) titleEl.textContent = newTitle.trim();
+      });
+
+      dropdown.querySelector('[data-action="delete"]').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        actionsEl.classList.remove('open');
+        itemBtn.style.removeProperty('z-index');
+        dropdown.remove();
+        const confirmed = await showConfirm('Apagar esta conversa? Não dá pra desfazer.');
+        if (!confirmed) return;
+        await fetch('/chats/' + chatId, { method: 'DELETE' }).catch(() => {});
+        const item = chatListEl.querySelector(`[data-chat-id="${chatId}"]`);
+        if (item) item.remove();
+        if (currentChatId === chatId) {
+          currentChatId = null;
+          messagesEl.innerHTML = '';
+          document.getElementById('chat-empty-hint')?.remove();
+          const next = chatListEl.querySelector('.chat-item');
+          if (next) openChat(next.dataset.chatId);
+          else renderEmptyState();
+        }
+      });
+
+      const close = (e) => {
+        if (!dropdown.contains(e.target) && !itemBtn.contains(e.target)) {
+          actionsEl.classList.remove('open');
+          itemBtn.style.removeProperty('z-index');
+          dropdown.remove();
+          document.removeEventListener('click', close);
+        }
+      };
+      setTimeout(() => document.addEventListener('click', close), 0);
+    }
+
+    // ── Sidebar — mobile toggle ───────────────────────────────────
+    function toggleSidebar() {
+      const isOpen = sidebarEl.classList.toggle('open');
+      overlayEl.classList.toggle('visible', isOpen);
+    }
+
+    function closeSidebar() {
+      sidebarEl.classList.remove('open');
+      overlayEl.classList.remove('visible');
+    }
+
+    newChatBtn.addEventListener('click', createChat);
+    headerMenuBtn?.addEventListener('click', toggleSidebar);
+    sidebarMenuBtn?.addEventListener('click', toggleSidebar);
+    overlayEl.addEventListener('click', closeSidebar);
+
+    // ── Suggestion chips — delegado no chat-wrapper (persiste ao reinserimento) ──
+    document.getElementById('chat-wrapper').addEventListener('click', (e) => {
+      const chip = e.target.closest('.suggestion-chip');
+      if (!chip) return;
+      inputEl.value = chip.textContent.trim();
+      inputEl.dispatchEvent(new Event('input'));
+      inputEl.focus();
+    });
+
+    // ── Sidebar search ────────────────────────────────────────────
+    function clearChatSearch() {
+      chatSearchInput.value = '';
+      chatListEl.querySelectorAll('.chat-item').forEach(el => el.style.display = '');
+      chatListEl.querySelector('.chat-search-empty')?.remove();
+    }
+
+    chatSearchInput.addEventListener('input', () => {
+      const q = chatSearchInput.value.trim().toLowerCase();
+      const items = chatListEl.querySelectorAll('.chat-item');
+      let visible = 0;
+      items.forEach(item => {
+        const title = item.querySelector('.chat-item-title')?.textContent.toLowerCase() || '';
+        const match = !q || title.includes(q);
+        item.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      let noResult = chatListEl.querySelector('.chat-search-empty');
+      if (visible === 0 && q) {
+        if (!noResult) {
+          noResult = document.createElement('div');
+          noResult.className = 'chat-search-empty';
+          chatListEl.appendChild(noResult);
+        }
+        noResult.textContent = `Nenhuma conversa com "${chatSearchInput.value}"`;
+      } else if (noResult) {
+        noResult.remove();
+      }
+    });
+
+    // ── Atalhos de teclado ────────────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      const inInput = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+
+      // Ctrl+Shift+O ou Cmd+Shift+O — nova conversa
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'O') {
+        e.preventDefault();
+        createChat();
+        return;
+      }
+
+      // "/" — focar no input de mensagem (quando não está em nenhum campo)
+      if (e.key === '/' && !inInput) {
+        e.preventDefault();
+        inputEl.focus();
+        return;
+      }
+
+      // Escape — fechar dropdown aberto ou sidebar mobile
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.chat-dropdown').forEach(d => {
+          d.closest('.chat-item-actions')?.classList.remove('open');
+          d.closest('.chat-item')?.style.removeProperty('z-index');
+          d.remove();
+        });
+        closeSidebar();
+      }
+    });
+
+    // ── Modais customizados (substituem prompt/confirm nativos) ──
+    function showConfirm(message) {
+      return new Promise((resolve) => {
+        const overlay  = document.getElementById('confirm-overlay');
+        const titleEl  = document.getElementById('confirm-title');
+        const okBtn    = document.getElementById('confirm-ok');
+        const cancelBtn = document.getElementById('confirm-cancel');
+
+        titleEl.textContent = message;
+        overlay.classList.add('visible');
+        overlay.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => okBtn.focus());
+
+        function close(value) {
+          overlay.classList.remove('visible');
+          overlay.setAttribute('aria-hidden', 'true');
+          okBtn.removeEventListener('click', onOk);
+          cancelBtn.removeEventListener('click', onCancel);
+          overlay.removeEventListener('click', onOverlayClick);
+          document.removeEventListener('keydown', onKeydown);
+          resolve(value);
+        }
+
+        function onOk()    { close(true); }
+        function onCancel() { close(false); }
+        function onKeydown(e) { if (e.key === 'Escape') close(false); }
+        function onOverlayClick(e) { if (e.target === overlay) close(false); }
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        overlay.addEventListener('click', onOverlayClick);
+        document.addEventListener('keydown', onKeydown);
+      });
+    }
+
+    function showPrompt(title, defaultValue) {
+      return new Promise((resolve) => {
+        const overlay  = document.getElementById('modal-overlay');
+        const titleEl  = document.getElementById('modal-title');
+        const input    = document.getElementById('modal-input');
+        const okBtn    = document.getElementById('modal-ok');
+        const cancelBtn = document.getElementById('modal-cancel');
+
+        titleEl.textContent = title;
+        input.value = defaultValue || '';
+        overlay.classList.add('visible');
+        overlay.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => { input.focus(); input.select(); });
+
+        function close(value) {
+          overlay.classList.remove('visible');
+          overlay.setAttribute('aria-hidden', 'true');
+          okBtn.removeEventListener('click', onOk);
+          cancelBtn.removeEventListener('click', onCancel);
+          input.removeEventListener('keydown', onKeydown);
+          overlay.removeEventListener('click', onOverlayClick);
+          resolve(value);
+        }
+
+        function onOk()    { close(input.value); }
+        function onCancel() { close(null); }
+        function onKeydown(e) {
+          if (e.key === 'Enter')  { e.preventDefault(); close(input.value); }
+          if (e.key === 'Escape') close(null);
+        }
+        function onOverlayClick(e) { if (e.target === overlay) close(null); }
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        input.addEventListener('keydown', onKeydown);
+        overlay.addEventListener('click', onOverlayClick);
+      });
+    }
+
+    // ── Welcome screen dismiss ────────────────────────────────────
+    function dismissWelcome() {
+      const welcome = document.getElementById('welcome-screen');
+      if (!welcome) return;
+      welcome.classList.add('fade-out');
+      setTimeout(() => welcome.remove(), 300);
+      document.getElementById('chat-wrapper').classList.add('has-messages');
+    }
+
+    // ── Theme toggle ──────────────────────────────────────────────
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('alfred-theme', t);
+      document.getElementById('icon-moon').style.display = t === 'dark' ? 'none'  : 'block';
+      document.getElementById('icon-sun').style.display  = t === 'dark' ? 'block' : 'none';
+    }
+
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+
+    // ── Init ──────────────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Captura HTML da welcome screen antes de qualquer remoção
+      WELCOME_SCREEN_HTML = document.getElementById('welcome-screen')?.outerHTML ?? '';
+
+      // Sincroniza ícones com o tema aplicado pelo anti-flicker script
+      applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
+
+      // Carrega histórico de chats
+      const chats = await loadChatList();
+      if (chats.length > 0) {
+        // Abre o último chat editado (lista já vem ordenada por updated_at DESC)
+        await openChat(chats[0].id);
+      } else {
+        // Nenhum chat ainda — foca no input (welcome screen já está visível)
+        inputEl.focus();
+      }
+
+    });
+  </script>
+
+  <div id="toast" role="alert" aria-live="polite"></div>
+</body>
+</html>
